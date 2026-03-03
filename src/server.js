@@ -23,6 +23,9 @@ app.get("/webhook", (req, res) => {
 // ✅ Endpoint que recibe mensajes
 app.post("/webhook", async (req, res) => {
   try {
+    console.log("====== BODY COMPLETO ======");
+    console.log(JSON.stringify(req.body, null, 2));
+
     const body = req.body;
 
     if (
@@ -34,35 +37,37 @@ app.post("/webhook", async (req, res) => {
       const message =
         body.entry[0].changes[0].value.messages[0];
 
-      const from = message.from; // número del cliente
+      const from = message.from;
       const text = message.text?.body;
 
       console.log("Mensaje recibido de:", from);
       console.log("Texto:", text);
 
-      // ✅ Enviar respuesta automática
-      await axios.post(
-        `https://graph.facebook.com/v19.0/964814516722240/messages`,
+      const response = await axios.post(
+        `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
         {
           messaging_product: "whatsapp",
           to: from,
           type: "text",
           text: {
-            body: "Hola 👋 Gracias por escribirnos. ¿Te interesa información sobre relleno de labios?",
+            body: "Hola 👋 Esto es una prueba automática.",
           },
         },
         {
           headers: {
-            Authorization: `Bearer EAARx19PbSFkBQ6CWVuFTzftWKvHQPfug5OIW0vEOCBogU4PCvMBhcZB6u98ZCqFAs9UO7ZAYOiZBnlbm8i7uZC8cP2ZC8j1VPfot1LWUwSPqGHdvOAtKP17gEnZAihRUDV5VfVJxLPWzQZAohwMQBZADPdJRzWPehx2L2aZAExfrpfwzBet0lJJsvyrZBM7AJ94UL12KTuh2d5ZAZBIlUjhNBXdO92EhdA5CaF4wQV6DzszLJQxC0oaJZBWsZBX`,
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
             "Content-Type": "application/json",
           },
         }
       );
+
+      console.log("✅ Respuesta de Meta:", response.data);
     }
 
     res.sendStatus(200);
   } catch (error) {
-    console.error("Error enviando mensaje:", error.response?.data || error.message);
+    console.error("❌ ERROR COMPLETO:");
+    console.error(error.response?.data || error.message);
     res.sendStatus(500);
   }
 });
