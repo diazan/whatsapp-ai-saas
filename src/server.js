@@ -6,6 +6,8 @@ app.use(express.json());
 // ✅ Aquí definimos el verify token
 const verifyToken = "estetica_verify_2026";
 const axios = require("axios");
+const PHONE_NUMBER_ID = "964814516722240";
+const ACCESS_TOKEN = "EAARx19PbSFkBQ6CWVuFTzftWKvHQPfug5OIW0vEOCBogU4PCvMBhcZB6u98ZCqFAs9UO7ZAYOiZBnlbm8i7uZC8cP2ZC8j1VPfot1LWUwSPqGHdvOAtKP17gEnZAihRUDV5VfVJxLPWzQZAohwMQBZADPdJRzWPehx2L2aZAExfrpfwzBet0lJJsvyrZBM7AJ94UL12KTuh2d5ZAZBIlUjhNBXdO92EhdA5CaF4wQV6DzszLJQxC0oaJZBWsZBX";
 
 // ✅ Endpoint de verificación
 app.get("/webhook", (req, res) => {
