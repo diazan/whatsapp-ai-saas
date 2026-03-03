@@ -53,7 +53,7 @@ app.post("/webhook", async (req, res) => {
         },
         {
           headers: {
-            Authorization: `EAARx19PbSFkBQ6CWVuFTzftWKvHQPfug5OIW0vEOCBogU4PCvMBhcZB6u98ZCqFAs9UO7ZAYOiZBnlbm8i7uZC8cP2ZC8j1VPfot1LWUwSPqGHdvOAtKP17gEnZAihRUDV5VfVJxLPWzQZAohwMQBZADPdJRzWPehx2L2aZAExfrpfwzBet0lJJsvyrZBM7AJ94UL12KTuh2d5ZAZBIlUjhNBXdO92EhdA5CaF4wQV6DzszLJQxC0oaJZBWsZBX`,
+            Authorization: `Bearer EAARx19PbSFkBQ6CWVuFTzftWKvHQPfug5OIW0vEOCBogU4PCvMBhcZB6u98ZCqFAs9UO7ZAYOiZBnlbm8i7uZC8cP2ZC8j1VPfot1LWUwSPqGHdvOAtKP17gEnZAihRUDV5VfVJxLPWzQZAohwMQBZADPdJRzWPehx2L2aZAExfrpfwzBet0lJJsvyrZBM7AJ94UL12KTuh2d5ZAZBIlUjhNBXdO92EhdA5CaF4wQV6DzszLJQxC0oaJZBWsZBX`,
             "Content-Type": "application/json",
           },
         }
