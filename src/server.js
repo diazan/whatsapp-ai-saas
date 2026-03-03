@@ -4,7 +4,7 @@ const app = express();
 app.use(express.json());
 
 // ✅ Aquí definimos el verify token
-const verifyToken = process.env.VERIFY_TOKEN || "estetica_verify_2026";
+const verifyToken = "estetica_verify_2026";
 
 // ✅ Endpoint de verificación
 app.get("/webhook", (req, res) => {
