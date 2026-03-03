@@ -1,21 +1,13 @@
-require('dotenv').config();
-const express = require('express');
-const webhookRoutes = require('./routes/webhook');
-
+const express = require("express");
 const app = express();
+
 app.use(express.json());
 
-app.use('/webhook', webhookRoutes);
+// ✅ Aquí definimos el verify token
+const verifyToken = process.env.VERIFY_TOKEN || "estetica_verify_2026";
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-});
-
+// ✅ Endpoint de verificación
 app.get("/webhook", (req, res) => {
-  const verifyToken = "estetica_verify_2026";
-
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
@@ -27,8 +19,15 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
+// ✅ Endpoint que recibe mensajes
 app.post("/webhook", (req, res) => {
   console.log("Webhook recibido:");
   console.log(JSON.stringify(req.body, null, 2));
   res.sendStatus(200);
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
