@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 
+console.log("🚀 VERSION NUEVA DEL SERVER CARGADA");
+
 app.use(express.json());
 
 // ✅ Aquí definimos el verify token
