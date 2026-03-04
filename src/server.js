@@ -1,15 +1,32 @@
+require("dotenv").config();
+
+if (!process.env.PHONE_NUMBER_ID || !process.env.ACCESS_TOKEN) {
+  throw new Error("Missing required environment variables");
+}
+
 const express = require("express");
+const webhookRoutes = require("./routes/webhook");
 const app = express();
+
+const prisma = require("./lib/prisma");
+
+prisma.$connect()
+  .then(() => console.log("✅ Connected to DB"))
+  .catch((err) => console.error("❌ DB connection error", err));
 
 console.log("🚀 VERSION NUEVA DEL SERVER CARGADA");
 
 app.use(express.json());
 
+app.use("/webhook", webhookRoutes);
+
+
 // ✅ Aquí definimos el verify token
 const verifyToken = "estetica_verify_2026";
 const axios = require("axios");
-const PHONE_NUMBER_ID = "964814516722240";
-const ACCESS_TOKEN = "EAARx19PbSFkBQzR54nApGqJrPoDLT18QihV0jZB1lUnmlU2otbXQZCEoxxvJ7cRcVjAHvrNsYjoFeUVPZBPZCylgYAuPKg7gSQAZCOMHx4GzMGcP4wiFBtnrF21aPkFKLctauajTaMVirtUWIILsSTZAoDTGzDZCOqnicXZCuq3t9RWt3bLsvnmjZCbMIZBB6LZAGKznWPbH7kacH3mBS4CQt2BVRlALoBTgXF4lhmC9LjoYQqV42bIIAvGAnVLBQpKfCKNoh4OcWCi34qGRZB5ZCAQzULBu3h8I3jUl7ma5E";
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 // ✅ Endpoint de verificación
 app.get("/webhook", (req, res) => {
