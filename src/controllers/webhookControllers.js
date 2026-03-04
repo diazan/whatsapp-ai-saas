@@ -9,8 +9,9 @@ const handleWebhook = async (req, res) => {
     if (!phoneNumberId) {
       return res.sendStatus(200);
     }
-
+    console.log("PHONE NUMBER ID:", phoneNumberId);
     const clinic = await getClinicByPhoneNumberId(phoneNumberId);
+    console.log("CLINIC ENCONTRADA:", clinic);
 
     if (!clinic) {
       console.log("Clinic not found");
