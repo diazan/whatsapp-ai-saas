@@ -2,7 +2,11 @@ const { getClinicByPhoneNumberId } = require("../services/clinicService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 
 const handleWebhook = async (req, res) => {
-  try {
+    const handleWebhook = async (req, res) => {
+        throw new Error("🚨 NUEVO CODIGO ACTIVO 🚨");
+  
+    };
+    /*try {
     const value = req.body.entry?.[0]?.changes?.[0]?.value;
 
     if (!value) return res.sendStatus(200);
@@ -34,7 +38,7 @@ const handleWebhook = async (req, res) => {
   } catch (error) {
     console.error("❌ Webhook error:", error.response?.data || error.message);
     return res.sendStatus(500);
-  }
+  }*/
 };
 
 module.exports = {
