@@ -1,9 +1,5 @@
 require("dotenv").config();
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("Missing DATABASE_URL");
-}
-
 const express = require("express");
 const prisma = require("./lib/prisma");
 const webhookRoutes = require("./routes/webhook");
