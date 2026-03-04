@@ -23,7 +23,7 @@ const handleWebhook = async (req, res) => {
     const from = message.from;
 
     await sendWhatsAppMessage({
-      accessToken: clinic.accessToken,
+      accessToken: "EAARx19PbSFkBQ65wDZAVJsK7eyanoxfJZBfnt3LtXJu9rF6XAmE5ZBnYOSzBIZA91c1UZActGNEgsERkGkeR4MAZBjd4uBYk9fIcQ5hFvuVYHKTMc2cabZCt51ljZAMJrwQZCm0rglzZCZAvlmuafKgC8cKZAZAKlYtqQ5y9VLR7h3488nCZA5lURYYOb3JpXZCu48JM4nQmgZDZD",
       phoneNumberId: clinic.phoneNumberId,
       to: from,
       message: "Hola 👋 Soy tu asistente virtual.",
