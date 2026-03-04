@@ -32,6 +32,8 @@ const handleWebhook = async (req, res) => {
       return res.sendStatus(200);
     }
 
+    console.log("CLINIC COMPLETA:", clinic);
+
     await sendWhatsAppMessage({
       accessToken: clinic.accessToken,
       phoneNumberId: clinic.phoneNumberId,
