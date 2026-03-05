@@ -1,15 +1,17 @@
 require("dotenv").config();
 
 const express = require("express");
-const app = express();
 
 const testRoutes = require("./routes/test.routes");
-app.use("/api", testRoutes);
+const webhookRoutes = require("./routes/webhook");
+
+const app = express();
 
 app.use(express.json());
 
-// ✅ MONTA RUTAS ANTES DE LISTEN
-app.use("/webhook", require("./routes/webhook"));
+// ✅ Montar rutas
+app.use("/api", testRoutes);
+app.use("/webhook", webhookRoutes);
 
 // Ruta base opcional
 app.get("/", (req, res) => {
@@ -19,5 +21,5 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });

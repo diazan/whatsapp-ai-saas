@@ -1,33 +1,26 @@
 const express = require("express");
 const router = express.Router();
+
 const { createAppointment } = require("../services/bookingService");
 
 router.post("/test-booking", async (req, res) => {
   try {
-    const {
-      tenantId,
-      serviceId,
-      patientName,
-      patientPhone,
-      startAt,
-    } = req.body;
+    console.log("BODY:", req.body);
 
-    const appointment = await createAppointment({
-      tenantId,
-      serviceId,
-      patientName,
-      patientPhone,
-      startAt,
-    });
+    const appointment = await createAppointment(req.body);
 
-    res.json({
+    return res.json({
       success: true,
       appointment,
     });
+
   } catch (error) {
-    res.status(400).json({
+    console.error("🔥 ERROR REAL:", error);
+
+    return res.status(400).json({
       success: false,
       error: error.message,
+      stack: error.stack,
     });
   }
 });

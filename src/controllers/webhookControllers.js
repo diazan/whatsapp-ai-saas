@@ -1,7 +1,7 @@
 const { getClinicByPhoneNumberId } = require("../services/clinicService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 
-const processedMessages = new Set(); 
+const processedMessages = new Set();
 // ✅ Protección simple anti-duplicado en memoria (suficiente para MVP)
 
 const handleWebhook = async (req, res) => {

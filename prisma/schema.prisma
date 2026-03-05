@@ -14,4 +14,92 @@ model Clinic {
   accessToken   String
   status        String   @default("active")
   createdAt     DateTime @default(now())
+
+  timeZone String @default("America/Mexico_City") // 👈 AQUÍ
+
+  services      Service[]
+  appointments  Appointment[]
+  conversations Conversation[] // 👈 AGREGAR ESTA LÍNEA
+  schedules     ClinicSchedule[]
+}
+
+model Service {
+  id String @id @default(uuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  name        String
+  durationMin Int
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@index([clinicId])
+}
+
+model Appointment {
+  id String @id @default(uuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  patientName  String
+  patientPhone String
+
+  startAt DateTime
+  endAt   DateTime
+
+  status       String  @default("scheduled")
+  reminderSent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([clinicId, startAt])
+  @@index([clinicId, patientPhone])
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  patientPhone String
+  patientName  String?
+
+  state   String
+  context Json?
+
+  active Boolean @default(true)
+
+  lastMessageAt DateTime @default(now())
+  expiresAt     DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([clinicId, patientPhone])
+  @@index([clinicId, active])
+}
+
+model ClinicSchedule {
+  id       String @id @default(uuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  dayOfWeek Int // 0=Sunday, 1=Monday... 6=Saturday
+  openTime  String // "09:00"
+  closeTime String // "18:00"
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@unique([clinicId, dayOfWeek])
+  @@index([clinicId])
 }
