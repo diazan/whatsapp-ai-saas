@@ -2,43 +2,68 @@ const { getClinicByPhoneNumberId } = require("../services/clinicService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 
 const handleWebhook = async (req, res) => {
-    const handleWebhook = async (req, res) => {
-        throw new Error("🚨 NUEVO CODIGO ACTIVO 🚨");
-  
-    };
-    /*try {
+  console.log("🔥 WEBHOOK HIT");
+
+  try {
     const value = req.body.entry?.[0]?.changes?.[0]?.value;
 
-    if (!value) return res.sendStatus(200);
+    if (!value) {
+      console.log("No value in webhook body");
+      return res.sendStatus(200);
+    }
 
     const phoneNumberId = value.metadata?.phone_number_id;
     const message = value.messages?.[0];
 
-    if (!phoneNumberId || !message || message.type !== "text") {
+    if (!phoneNumberId) {
+      console.log("No phoneNumberId found");
       return res.sendStatus(200);
     }
 
+    if (!message) {
+      console.log("No message object found");
+      return res.sendStatus(200);
+    }
+
+    if (message.type !== "text") {
+      console.log("Ignoring non-text message");
+      return res.sendStatus(200);
+    }
+
+    console.log("📩 Incoming message:", message.text?.body);
+
     const clinic = await getClinicByPhoneNumberId(phoneNumberId);
 
-    if (!clinic || clinic.status !== "active") {
+    if (!clinic) {
+      console.log("Clinic not found for phoneNumberId:", phoneNumberId);
+      return res.sendStatus(200);
+    }
+
+    if (clinic.status !== "active") {
+      console.log("Clinic inactive:", clinic.id);
       return res.sendStatus(200);
     }
 
     const from = message.from;
 
-    await sendWhatsAppMessage({
-      accessToken: "EAARx19PbSFkBQ65wDZAVJsK7eyanoxfJZBfnt3LtXJu9rF6XAmE5ZBnYOSzBIZA91c1UZActGNEgsERkGkeR4MAZBjd4uBYk9fIcQ5hFvuVYHKTMc2cabZCt51ljZAMJrwQZCm0rglzZCZAvlmuafKgC8cKZAZAKlYtqQ5y9VLR7h3488nCZA5lURYYOb3JpXZCu48JM4nQmgZDZD",
+    const result = await sendWhatsAppMessage({
+      accessToken: clinic.accessToken, // ✅ ahora usa el token de la DB
       phoneNumberId: clinic.phoneNumberId,
       to: from,
       message: "Hola 👋 Soy tu asistente virtual.",
     });
 
+    if (!result.success) {
+      console.log("⚠️ Message failed but server stays alive");
+    }
+
     return res.sendStatus(200);
 
   } catch (error) {
-    console.error("❌ Webhook error:", error.response?.data || error.message);
-    return res.sendStatus(500);
-  }*/
+    console.error("❌ Webhook internal error:", error.message);
+    return res.sendStatus(200); 
+    // ⚠️ Siempre 200 para que Meta no reintente en loop
+  }
 };
 
 module.exports = {

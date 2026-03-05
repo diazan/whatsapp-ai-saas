@@ -1,12 +1,7 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { verifyWebhook, handleWebhook } = require("../controllers/webhookControllers");
+const { handleWebhook } = require("../controllers/webhookController");
 
-
-// Verificación inicial de Meta
-router.get("/", verifyWebhook);
-
-// Recepción de mensajes
 router.post("/", handleWebhook);
 
 module.exports = router;
