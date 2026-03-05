@@ -94,9 +94,6 @@ const handleWebhook = async (req, res) => {
       }
     });
 
-    if (!result.success) {
-      console.log("⚠️ Message failed but server stays alive");
-    }
 
   } catch (error) {
     console.error("❌ Webhook internal error:", error.message);
