@@ -3,6 +3,9 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 
+const testRoutes = require("./routes/test.routes");
+app.use("/api", testRoutes);
+
 app.use(express.json());
 
 // ✅ MONTA RUTAS ANTES DE LISTEN
