@@ -1,17 +1,17 @@
-import prisma from "../lib/prisma.js"
+const prisma = require("../lib/prisma");
 
-const EXPIRATION_MINUTES = 30
+const EXPIRATION_MINUTES = 30;
 
 function addMinutes(date, minutes) {
-  return new Date(date.getTime() + minutes * 60000)
+  return new Date(date.getTime() + minutes * 60000);
 }
 
-export async function getOrCreateConversation({
+const getOrCreateConversation = async ({
   clinicId,
   patientPhone,
   patientName
-}) {
-  const now = new Date()
+}) => {
+  const now = new Date();
 
   let conversation = await prisma.conversation.findFirst({
     where: {
@@ -19,7 +19,7 @@ export async function getOrCreateConversation({
       patientPhone,
       active: true
     }
-  })
+  });
 
   // Si existe pero expiró
   if (conversation && conversation.expiresAt < now) {
@@ -29,8 +29,8 @@ export async function getOrCreateConversation({
         active: false,
         state: "CANCELLED"
       }
-    })
-    conversation = null
+    });
+    conversation = null;
   }
 
   if (!conversation) {
@@ -42,13 +42,13 @@ export async function getOrCreateConversation({
         state: "IDLE",
         expiresAt: addMinutes(now, EXPIRATION_MINUTES)
       }
-    })
+    });
   }
 
-  return conversation
-}
+  return conversation;
+};
 
-export async function updateConversation(id, data) {
+const updateConversation = async (id, data) => {
   return prisma.conversation.update({
     where: { id },
     data: {
@@ -56,15 +56,21 @@ export async function updateConversation(id, data) {
       lastMessageAt: new Date(),
       expiresAt: addMinutes(new Date(), EXPIRATION_MINUTES)
     }
-  })
-}
+  });
+};
 
-export async function closeConversation(id, finalState) {
+const closeConversation = async (id, finalState) => {
   return prisma.conversation.update({
     where: { id },
     data: {
       state: finalState,
       active: false
     }
-  })
-}
+  });
+};
+
+module.exports = {
+  getOrCreateConversation,
+  updateConversation,
+  closeConversation
+};

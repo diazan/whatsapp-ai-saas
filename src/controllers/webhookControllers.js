@@ -77,11 +77,21 @@ const handleWebhook = async (req, res) => {
     const from = message.from;
 
     // ✅ 6. Enviar respuesta
-    const result = await sendWhatsAppMessage({
-      accessToken: clinic.accessToken,
-      phoneNumberId: clinic.phoneNumberId,
-      to: from,
-      message: "Hola 👋 Soy tu asistente virtual.",
+    const { handleIncomingMessage } = require("../services/conversation.state-machine");
+
+    await handleIncomingMessage({
+      clinic,
+      message: incomingText,
+      patientPhone: from,
+      patientName: null,
+      sendMessage: async (text) => {
+        await sendWhatsAppMessage({
+          accessToken: clinic.accessToken,
+          phoneNumberId: clinic.phoneNumberId,
+          to: from,
+          message: text,
+        });
+      }
     });
 
     if (!result.success) {
