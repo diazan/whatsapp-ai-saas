@@ -1,53 +1,84 @@
 const { getClinicByPhoneNumberId } = require("../services/clinicService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 
+const processedMessages = new Set(); 
+// ✅ Protección simple anti-duplicado en memoria (suficiente para MVP)
+
 const handleWebhook = async (req, res) => {
   console.log("🔥 WEBHOOK HIT");
+
+  // ✅ 1. RESPONDER INMEDIATAMENTE A META
+  res.sendStatus(200);
 
   try {
     const value = req.body.entry?.[0]?.changes?.[0]?.value;
 
     if (!value) {
       console.log("No value in webhook body");
-      return res.sendStatus(200);
+      return;
     }
 
     const phoneNumberId = value.metadata?.phone_number_id;
-    const message = value.messages?.[0];
 
     if (!phoneNumberId) {
       console.log("No phoneNumberId found");
-      return res.sendStatus(200);
+      return;
     }
 
-    if (!message) {
-      console.log("No message object found");
-      return res.sendStatus(200);
+    // ✅ 2. Ignorar eventos que NO sean mensajes entrantes
+    if (!value.messages || value.messages.length === 0) {
+      console.log("No incoming messages (probably status update)");
+      return;
     }
 
+    const message = value.messages[0];
+
+    // ✅ 3. Protección anti-duplicado (Meta puede reenviar eventos)
+    if (processedMessages.has(message.id)) {
+      console.log("Duplicate message ignored:", message.id);
+      return;
+    }
+
+    processedMessages.add(message.id);
+
+    // Limpieza básica de memoria (evita crecimiento infinito)
+    setTimeout(() => {
+      processedMessages.delete(message.id);
+    }, 5 * 60 * 1000); // 5 minutos
+
+    // ✅ 4. Ignorar mensajes enviados por el propio negocio
+    if (message.from === phoneNumberId) {
+      console.log("Ignoring own message (loop prevention)");
+      return;
+    }
+
+    // ✅ 5. Solo texto en MVP
     if (message.type !== "text") {
       console.log("Ignoring non-text message");
-      return res.sendStatus(200);
+      return;
     }
 
-    console.log("📩 Incoming message:", message.text?.body);
+    const incomingText = message.text?.body?.trim();
+
+    console.log("📩 Incoming message:", incomingText);
 
     const clinic = await getClinicByPhoneNumberId(phoneNumberId);
 
     if (!clinic) {
       console.log("Clinic not found for phoneNumberId:", phoneNumberId);
-      return res.sendStatus(200);
+      return;
     }
 
     if (clinic.status !== "active") {
       console.log("Clinic inactive:", clinic.id);
-      return res.sendStatus(200);
+      return;
     }
 
     const from = message.from;
 
+    // ✅ 6. Enviar respuesta
     const result = await sendWhatsAppMessage({
-      accessToken: clinic.accessToken, // ✅ ahora usa el token de la DB
+      accessToken: clinic.accessToken,
       phoneNumberId: clinic.phoneNumberId,
       to: from,
       message: "Hola 👋 Soy tu asistente virtual.",
@@ -57,12 +88,9 @@ const handleWebhook = async (req, res) => {
       console.log("⚠️ Message failed but server stays alive");
     }
 
-    return res.sendStatus(200);
-
   } catch (error) {
     console.error("❌ Webhook internal error:", error.message);
-    return res.sendStatus(200); 
-    // ⚠️ Siempre 200 para que Meta no reintente en loop
+    // ⚠️ NO devolver nada aquí, ya enviamos 200 arriba
   }
 };
 
