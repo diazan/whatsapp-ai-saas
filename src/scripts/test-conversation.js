@@ -17,7 +17,7 @@ async function main() {
   })
 
   console.log("✅ Conversación creada o encontrada:")
-  console.log(conversation)
+  
 }
 
 main()
