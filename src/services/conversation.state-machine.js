@@ -163,7 +163,6 @@ async function handleDateSelection({ text, conversation, sendMessage }) {
   );
 }
 
-console.log("CONTEXT EN TIME:", conversation.context);
 async function handleTimeSelection({ text, clinic, conversation, sendMessage }) {
 
   const time = parseTime(text);
