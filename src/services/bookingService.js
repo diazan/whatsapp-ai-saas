@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { DateTime } = require("luxon");
 const { validateClinicSchedule } = require("./availability.service");
 
 const createAppointment = async ({
@@ -9,7 +10,16 @@ const createAppointment = async ({
   startAt,
 }) => {
 
-  // 1️⃣ Obtener servicio
+  // 1️⃣ Obtener clínica (para timezone)
+  const clinic = await prisma.clinic.findUnique({
+    where: { id: clinicId },
+  });
+
+  if (!clinic) {
+    throw new Error("Clinic not found");
+  }
+
+  // 2️⃣ Obtener servicio
   const service = await prisma.service.findFirst({
     where: {
       id: serviceId,
@@ -22,16 +32,26 @@ const createAppointment = async ({
     throw new Error("Service not found");
   }
 
-  // 2️⃣ Calcular fechas
-  const startDate = new Date(startAt);
-  const endDate = new Date(
-    startDate.getTime() + service.durationMin * 60 * 1000
-  );
+  // ✅ 3️⃣ Construir fecha correctamente en timezone de la clínica
+  const startDateTime = DateTime.fromISO(startAt, {
+    zone: clinic.timeZone,
+  });
 
-  // ✅ 3️⃣ Validar horario de clínica (ANTES de solapamientos)
+  if (!startDateTime.isValid) {
+    throw new Error("Invalid date format");
+  }
+
+  const endDateTime = startDateTime.plus({
+    minutes: service.durationMin,
+  });
+
+  const startDate = startDateTime.toJSDate();
+  const endDate = endDateTime.toJSDate();
+
+  // ✅ 4️⃣ Validar horario de clínica
   await validateClinicSchedule(clinicId, startDate, endDate);
 
-  // 4️⃣ Verificar solapamientos
+  // 5️⃣ Verificar solapamientos
   const overlapping = await prisma.appointment.findFirst({
     where: {
       clinicId,
@@ -51,7 +71,7 @@ const createAppointment = async ({
     throw new Error("Time slot not available");
   }
 
-  // 5️⃣ Crear cita
+  // 6️⃣ Crear cita
   const appointment = await prisma.appointment.create({
     data: {
       clinicId,
