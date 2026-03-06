@@ -149,16 +149,21 @@ async function handleDateSelection({ text, conversation, sendMessage }) {
     dateISO: date.toISOString().split("T")[0] // YYYY-MM-DD limpio
   };
 
+  console.log("DATE PARSED:", date);
+
   await updateConversation(conversation.id, {
     state: "WAITING_TIME",
     context: updatedContext
   });
+
+  console.log("CONTEXT GUARDADO:", updatedContext);
 
   return sendMessage(
     "Perfecto ✅\n\n¿A qué hora deseas la cita?\nFormato: HH:mm"
   );
 }
 
+console.log("CONTEXT EN TIME:", conversation.context);
 async function handleTimeSelection({ text, clinic, conversation, sendMessage }) {
 
   const time = parseTime(text);
