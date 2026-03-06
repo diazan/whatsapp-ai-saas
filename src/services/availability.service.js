@@ -1,6 +1,12 @@
 const { DateTime } = require("luxon");
 const prisma = require("../lib/prisma");
 
+// Asegurarnos de usar la zona horaria de la clínica
+
+
+// Convertir weekday (1-7) a formato 0-6
+
+
 const validateClinicSchedule = async (clinicId, startAt, endAt) => {
   const clinic = await prisma.clinic.findUnique({
     where: { id: clinicId }
@@ -13,8 +19,11 @@ const validateClinicSchedule = async (clinicId, startAt, endAt) => {
   const start = DateTime.fromJSDate(startAt).setZone(clinic.timeZone);
   const end   = DateTime.fromJSDate(endAt).setZone(clinic.timeZone);
 
-  // Luxon: Monday=1...Sunday=7 → convertimos a 0=Sunday
-  const dayOfWeek = start.weekday % 7;
+  // ✅ CORRECTO: aplicar timezone antes de calcular weekday
+  const dateTime = DateTime.fromJSDate(startAt)
+    .setZone(clinic.timeZone);
+
+  const dayOfWeek = dateTime.weekday % 7;
 
   const schedule = await prisma.clinicSchedule.findUnique({
     where: {
@@ -42,3 +51,4 @@ const validateClinicSchedule = async (clinicId, startAt, endAt) => {
 module.exports = {
   validateClinicSchedule,
 };
+
