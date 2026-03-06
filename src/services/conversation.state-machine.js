@@ -146,7 +146,7 @@ async function handleDateSelection({ text, conversation, sendMessage }) {
 
   const updatedContext = {
     ...conversation.context,
-    date: date.toISOString()
+    dateISO: date.toISOString().split("T")[0] // YYYY-MM-DD limpio
   };
 
   await updateConversation(conversation.id, {
@@ -169,13 +169,14 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
     );
   }
 
-  const date = new Date(conversation.context.date);
+  const dateISO = conversation.context.dateISO;
 
-  const [hours, minutes] = time.split(":");
+  if (!dateISO) {
+    return sendMessage("Error interno de fecha. Intenta nuevamente.");
+  }
 
-  date.setHours(parseInt(hours));
-  date.setMinutes(parseInt(minutes));
-  date.setSeconds(0);
+  // ✅ Construimos ISO limpio SIN crear Date antes
+  const startAtISO = `${dateISO}T${time}:00`;
 
   try {
 
@@ -184,7 +185,7 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
       serviceId: conversation.context.serviceId,
       patientName: conversation.patientName,
       patientPhone: conversation.patientPhone,
-      startAt: date,
+      startAt: startAtISO, // ✅ enviamos ISO string limpio
     });
 
     await updateConversation(conversation.id, {
@@ -197,6 +198,8 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
     );
 
   } catch (error) {
+
+    console.error("ERROR REAL AL AGENDAR:", error);
 
     if (
       error.message === "Time slot not available" ||

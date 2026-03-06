@@ -31,7 +31,7 @@ const createAppointment = async ({
   if (!service) {
     throw new Error("Service not found");
   }
-
+  console.log("START AT RECIBIDO:", startAt);
   // ✅ 3️⃣ Construir fecha correctamente en timezone de la clínica
   const startDateTime = DateTime.fromISO(startAt, {
     zone: clinic.timeZone,
