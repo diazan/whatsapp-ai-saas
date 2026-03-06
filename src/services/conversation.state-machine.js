@@ -184,6 +184,9 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
 
   try {
 
+    console.log("CONVERSATION EN TIME:", conversation);
+    console.log("CONTEXT FINAL:", conversation.context);
+
     await createAppointment({
       clinicId: clinic.id,
       serviceId: conversation.context.serviceId,
