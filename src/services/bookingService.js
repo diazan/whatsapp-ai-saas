@@ -35,7 +35,13 @@ const createAppointment = async ({
   // ✅ 3️⃣ Construir fecha correctamente en timezone de la clínica
   const startDateTime = DateTime.fromISO(startAt, {
     zone: clinic.timeZone,
+    setZone: true,
   });
+
+  if (!startDateTime.isValid) {
+    console.error("INVALID DATETIME:", startDateTime.invalidExplanation);
+    throw new Error("Invalid date format");
+  }
 
   if (!startDateTime.isValid) {
     throw new Error("Invalid date format");
