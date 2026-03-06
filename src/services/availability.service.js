@@ -5,7 +5,12 @@ const prisma = require("../lib/prisma");
 
 
 // Convertir weekday (1-7) a formato 0-6
-
+console.log("DEBUG HORARIO:", {
+  startISO: start.toISO(),
+  startLocal: start.toFormat("HH:mm"),
+  openTime: schedule.openTime,
+  closeTime: schedule.closeTime
+});
 
 const validateClinicSchedule = async (clinicId, startAt, endAt) => {
   const clinic = await prisma.clinic.findUnique({
