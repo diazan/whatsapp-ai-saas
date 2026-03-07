@@ -10,7 +10,22 @@ const createAppointment = async ({
   startAt,
 }) => {
 
-  // 1️⃣ Obtener clínica (para timezone)
+  // ✅ 0️⃣ Validaciones básicas
+  if (!clinicId || !serviceId || !startAt) {
+    throw new Error("Missing required booking data");
+  }
+
+  if (!patientName || typeof patientName !== "string") {
+    throw new Error("Invalid patient name");
+  }
+
+  const cleanName = patientName.trim();
+
+  if (cleanName.length < 2 || cleanName.length > 100) {
+    throw new Error("Invalid patient name");
+  }
+
+  // 1️⃣ Obtener clínica
   const clinic = await prisma.clinic.findUnique({
     where: { id: clinicId },
   });
@@ -31,20 +46,22 @@ const createAppointment = async ({
   if (!service) {
     throw new Error("Service not found");
   }
-  console.log("START AT RECIBIDO:", startAt);
-  // ✅ 3️⃣ Construir fecha correctamente en timezone de la clínica
+
+  // ✅ 3️⃣ Construir fecha en timezone correcta
   const startDateTime = DateTime.fromISO(startAt, {
     zone: clinic.timeZone,
     setZone: true,
   });
 
   if (!startDateTime.isValid) {
-    console.error("INVALID DATETIME:", startDateTime.invalidExplanation);
     throw new Error("Invalid date format");
   }
 
-  if (!startDateTime.isValid) {
-    throw new Error("Invalid date format");
+  // ✅ 4️⃣ Evitar citas en el pasado (timezone clínica)
+  const nowInClinicTz = DateTime.now().setZone(clinic.timeZone);
+
+  if (startDateTime <= nowInClinicTz) {
+    throw new Error("Cannot book in the past");
   }
 
   const endDateTime = startDateTime.plus({
@@ -54,10 +71,10 @@ const createAppointment = async ({
   const startDate = startDateTime.toJSDate();
   const endDate = endDateTime.toJSDate();
 
-  // ✅ 4️⃣ Validar horario de clínica
+  // ✅ 5️⃣ Validar horario de clínica
   await validateClinicSchedule(clinicId, startDate, endDate);
 
-  // 5️⃣ Verificar solapamientos
+  // ✅ 6️⃣ Verificar solapamientos
   const overlapping = await prisma.appointment.findFirst({
     where: {
       clinicId,
@@ -77,12 +94,12 @@ const createAppointment = async ({
     throw new Error("Time slot not available");
   }
 
-  // 6️⃣ Crear cita
+  // ✅ 7️⃣ Crear cita
   const appointment = await prisma.appointment.create({
     data: {
       clinicId,
       serviceId,
-      patientName,
+      patientName: cleanName,
       patientPhone,
       startAt: startDate,
       endAt: endDate,
