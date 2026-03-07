@@ -1,6 +1,6 @@
 const { getAvailableSlotsForDay } = require("./availability.service");
 const prisma = require("../lib/prisma");
-const { createAppointment } = require("./bookingService");
+const { createAppointment, rescheduleAppointment } = require("./bookingService");
 const { parseDate } = require("../utils/date.utils");
 const {
   getOrCreateConversation,
@@ -18,10 +18,26 @@ const handleIncomingMessage = async ({
 }) => {
 
   const conversation = await getOrCreateConversation({
+    
     clinicId: clinic.id,
     patientPhone,
     patientName
   });
+
+  if (conversation.expired) {
+
+  await prisma.conversation.update({
+    where: { id: conversation.id },
+    data: {
+      active: false,
+      state: "CANCELLED"
+    }
+  });
+
+  return sendMessage(
+    "La conversación anterior expiró por inactividad.\n\nEscribe *inicio* para comenzar nuevamente."
+  );
+}
 
      // ✅ Timeout conversacional usando expiresAt
   const now = new Date();
@@ -52,13 +68,16 @@ const handleIncomingMessage = async ({
     });
 
     return sendMessage(
-      "Hola 👋\n\n" +
-      "¿Qué deseas hacer?\n\n" +
-      "1️⃣ Agendar cita\n" +
-      "2️⃣ Cancelar cita\n" +
-      "3️⃣ Ver mi próxima cita"
+      `Hola 👋
+
+    ¿Qué deseas hacer?
+
+    1️⃣ Agendar cita
+    2️⃣ Cancelar cita
+    3️⃣ Ver mi próxima cita
+    4️⃣ Reprogramar cita`
     );
-  }
+      }
 
 
   // ✅ Reinicio forzado si vuelve a escribir palabra clave
@@ -87,6 +106,12 @@ const handleIncomingMessage = async ({
     case "WAITING_TIME":
       return handleTimeSelection({ text, clinic, conversation, sendMessage });
 
+    case "WAITING_RESCHEDULE_DATE":
+      return handleRescheduleDate({ text, clinic, conversation, sendMessage });
+
+    case "WAITING_RESCHEDULE_TIME":
+      return handleRescheduleTime({ text, clinic, conversation, sendMessage });
+
     default:
       return sendMessage(
         "Escribe *inicio* para comenzar a agendar."
@@ -97,13 +122,16 @@ const handleIncomingMessage = async ({
 
 async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
-  if (text !== "1" && text !== "2" && text !== "3") {
+  if (text !== "1" && text !== "2" && text !== "3" && text !== "4") {
     return sendMessage(
-      "Hola 👋\n\n" +
-      "¿Qué deseas hacer?\n\n" +
-      "1️⃣ Agendar cita\n" +
-      "2️⃣ Cancelar cita\n" +
-      "3️⃣ Ver mi próxima cita"
+      `Hola 👋
+
+    ¿Qué deseas hacer?
+
+    1️⃣ Agendar cita
+    2️⃣ Cancelar cita
+    3️⃣ Ver mi próxima cita
+    4️⃣ Reprogramar cita`
     );
   }
 
@@ -171,6 +199,9 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
           gte: now
         }
       },
+      include: {
+        service: true
+      },
       orderBy: {
         startAt: "asc"
       }
@@ -191,17 +222,65 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     const formattedTime = dateTime.toFormat("hh:mm a");
 
     return sendMessage(
-      `📅 Tu próxima cita:\n\n` +
-      `Fecha: ${formattedDate}\n` +
-      `Hora: ${formattedTime}`
+      "📅 Tu próxima cita:\n\n" +
+      `🦷 Servicio: ${appointment.service.name}\n` +
+      `📆 Fecha: ${formattedDate}\n` +
+      `⏰ Hora: ${formattedTime}`
+    );
+  }
+
+    // ✅ Opción 4 - Reprogramar
+  if (text === "4") {
+
+    const now = new Date();
+
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        clinicId: clinic.id,
+        patientPhone: conversation.patientPhone,
+        status: {
+          in: ["scheduled", "confirmed"]
+        },
+        startAt: {
+          gte: now
+        }
+      },
+      orderBy: {
+        startAt: "asc"
+      }
+    });
+
+    if (!appointment) {
+      return sendMessage(
+        "No tienes citas próximas para reprogramar."
+      );
+    }
+
+    const service = await prisma.service.findUnique({
+      where: { id: appointment.serviceId }
+    });
+
+    await updateConversation(conversation.id, {
+      state: "WAITING_RESCHEDULE_DATE",
+      context: {
+        appointmentId: appointment.id,
+        serviceId: appointment.serviceId,
+        serviceName: service.name,
+        durationMin: service.durationMin
+      }
+    });
+
+    return sendMessage(
+      `Vas a reprogramar tu cita de ${service.name}.\n\n` +
+      `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
     );
   }
 }
 
 async function handleServiceSelection({ text, clinic, conversation, sendMessage }) {
 
-  const index = parseInt(text);
-
+  const index = Number(text);
+  
   if (isNaN(index)) {
     return sendMessage(
       "Por favor responde con el número del servicio."
@@ -274,6 +353,20 @@ async function handleDateSelection({ text, conversation, sendMessage }) {
 }
 
 async function handleTimeSelection({ text, clinic, conversation, sendMessage }) {
+
+
+  // ✅ Si respondió solo con número (ej: "1", "2")
+  if (/^\d+$/.test(text) && conversation.context.availableSlots) {
+
+    const index = parseInt(text, 10);
+    const selected = conversation.context.availableSlots[index - 1];
+
+    if (!selected) {
+      return sendMessage("Opción inválida. Elige un número válido.");
+    }
+
+    text = selected;
+  }
 
   const time = parseTime(text);
 
@@ -391,20 +484,148 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
 }
 
 function parseTime(text) {
-  const regex = /^(\d{1,2}):([0-5]\d)$/;
 
-  const match = text.match(regex);
-  if (!match) return null;
+  const cleaned = text.toLowerCase().replace(/\s/g, "");
 
-  let hour = parseInt(match[1], 10);
-  const minute = match[2];
+  // ✅ Formato HH:mm (24h)
+  const regex24 = /^(\d{1,2}):([0-5]\d)$/;
+  const match24 = cleaned.match(regex24);
 
-  if (hour < 0 || hour > 23) return null;
+  if (match24) {
+    let hour = parseInt(match24[1], 10);
+    const minute = match24[2];
 
-  // Normalizar a formato HH:mm
-  const normalizedHour = hour.toString().padStart(2, "0");
+    if (hour >= 0 && hour <= 23) {
+      return `${hour.toString().padStart(2, "0")}:${minute}`;
+    }
+  }
 
-  return `${normalizedHour}:${minute}`;
+  // ✅ Formato 2pm / 2:30pm / 10am
+  const regexAmPm = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/;
+  const matchAmPm = cleaned.match(regexAmPm);
+
+  if (matchAmPm) {
+    let hour = parseInt(matchAmPm[1], 10);
+    const minute = matchAmPm[2] || "00";
+    const period = matchAmPm[3];
+
+    if (hour < 1 || hour > 12) return null;
+
+    if (period === "pm" && hour !== 12) hour += 12;
+    if (period === "am" && hour === 12) hour = 0;
+
+    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  }
+
+  return null;
+}
+
+async function handleRescheduleDate({ text, clinic, conversation, sendMessage }) {
+
+  const date = parseDate(text);
+
+  if (!date) {
+    return sendMessage("Fecha inválida.\nUsa formato DD/MM/AAAA");
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (date < today) {
+    return sendMessage("No puedes elegir una fecha pasada.");
+  }
+
+  const updatedContext = {
+    ...conversation.context,
+    dateISO: date.toISOString().split("T")[0]
+  };
+
+  const slots = await getAvailableSlotsForDay({
+    clinicId: clinic.id,
+    serviceId: conversation.context.serviceId,
+    dateISO: updatedContext.dateISO
+  });
+
+  if (!slots.length) {
+    return sendMessage(
+      "No hay horarios disponibles para esa fecha.\nElige otra fecha."
+    );
+  }
+
+  const limitedSlots = slots.slice(0, 8);
+
+  let response = "Estos horarios están disponibles:\n\n";
+
+  limitedSlots.forEach((slot, index) => {
+    response += `${index + 1}️⃣ ${slot}\n`;
+  });
+
+  response += "\nResponde con el número o escribe la hora (ej: 2pm).";
+
+  await updateConversation(conversation.id, {
+    state: "WAITING_RESCHEDULE_TIME",
+    context: {
+      ...updatedContext,
+      availableSlots: limitedSlots
+    }
+  });
+
+  return sendMessage(response);
+}
+
+async function handleRescheduleTime({ text, clinic, conversation, sendMessage }) {
+
+  const time = parseTime(text);
+
+  if (!time) {
+    return sendMessage("Hora inválida.\nUsa formato HH:mm");
+  }
+
+  const dateISO = conversation.context.dateISO;
+
+  const startAtISO = `${dateISO}T${time}:00`;
+
+  try {
+
+    await rescheduleAppointment({
+      appointmentId: conversation.context.appointmentId,
+      clinicId: clinic.id,
+      serviceId: conversation.context.serviceId,
+      newStartAt: startAtISO
+    });
+
+    await updateConversation(conversation.id, {
+      state: "COMPLETED",
+      active: false
+    });
+
+    const [year, month, day] = dateISO.split("-");
+    const formattedDate = `${day}/${month}/${year}`;
+
+    const [hourStr, minute] = time.split(":");
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+
+    if (hour === 0) hour = 12;
+    if (hour > 12) hour -= 12;
+
+    const formattedTime = `${hour}:${minute} ${ampm}`;
+
+    return sendMessage(
+      `✅ Tu cita ha sido reprogramada\n\n` +
+      `📌 Servicio: ${conversation.context.serviceName}\n` +
+      `📅 Fecha: ${formattedDate}\n` +
+      `⏰ Hora: ${formattedTime}`
+    );
+
+  } catch (error) {
+
+    if (error.message === "Time slot not available") {
+      return sendMessage("Ese horario no está disponible. Elige otra hora.");
+    }
+
+    return sendMessage("Ocurrió un error.\nEscribe *inicio* para comenzar nuevamente.");
+  }
 }
 
 module.exports = {

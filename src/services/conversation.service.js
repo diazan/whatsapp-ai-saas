@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-const EXPIRATION_MINUTES = 1;
+const EXPIRATION_MINUTES = 0.2;
 
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60000);
@@ -23,14 +23,10 @@ const getOrCreateConversation = async ({
 
   // Si existe pero expiró
   if (conversation && conversation.expiresAt < now) {
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: {
-        active: false,
-        state: "CANCELLED"
-      }
-    });
-    conversation = null;
+    return {
+      ...conversation,
+      expired: true
+    };
   }
 
   if (!conversation) {

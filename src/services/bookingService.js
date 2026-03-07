@@ -110,6 +110,93 @@ const createAppointment = async ({
   return appointment;
 };
 
+const rescheduleAppointment = async ({
+  appointmentId,
+  clinicId,
+  serviceId,
+  newStartAt
+}) => {
+
+  if (!appointmentId || !clinicId || !serviceId || !newStartAt) {
+    throw new Error("Missing required reschedule data");
+  }
+
+  const clinic = await prisma.clinic.findUnique({
+    where: { id: clinicId },
+  });
+
+  if (!clinic) {
+    throw new Error("Clinic not found");
+  }
+
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      clinicId,
+      active: true,
+    },
+  });
+
+  if (!service) {
+    throw new Error("Service not found");
+  }
+
+  const startDateTime = DateTime.fromISO(newStartAt, {
+    zone: clinic.timeZone,
+    setZone: true,
+  });
+
+  if (!startDateTime.isValid) {
+    throw new Error("Invalid date format");
+  }
+
+  const nowInClinicTz = DateTime.now().setZone(clinic.timeZone);
+
+  if (startDateTime <= nowInClinicTz) {
+    throw new Error("Cannot book in the past");
+  }
+
+  const endDateTime = startDateTime.plus({
+    minutes: service.durationMin,
+  });
+
+  const startDate = startDateTime.toJSDate();
+  const endDate = endDateTime.toJSDate();
+
+  await validateClinicSchedule(clinicId, startDate, endDate);
+
+  const overlapping = await prisma.appointment.findFirst({
+    where: {
+      clinicId,
+      id: { not: appointmentId }, // ✅ EXCLUIR MISMA CITA
+      status: {
+        in: ["scheduled", "confirmed"],
+      },
+      startAt: {
+        lt: endDate,
+      },
+      endAt: {
+        gt: startDate,
+      },
+    },
+  });
+
+  if (overlapping) {
+    throw new Error("Time slot not available");
+  }
+
+  const updated = await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      startAt: startDate,
+      endAt: endDate,
+    },
+  });
+
+  return updated;
+};
+
 module.exports = {
   createAppointment,
+  rescheduleAppointment
 };
