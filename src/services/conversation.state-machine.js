@@ -1,6 +1,6 @@
 const { getAvailableSlotsForDay } = require("./availability.service");
 const prisma = require("../lib/prisma");
-const { createAppointment, rescheduleAppointment } = require("./bookingService");
+const { createAppointment, rescheduleAppointment, cancelNextUpcomingAppointment  } = require("./bookingService");
 const { parseDate } = require("../utils/date.utils");
 const {
   getOrCreateConversation,
@@ -58,7 +58,22 @@ const handleIncomingMessage = async ({
   }
 
   const text = message.toLowerCase().trim();
+  // ✅ Escape global al menú principal
+  if (text === "0") {
 
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      `¿Qué deseas hacer?\n\n` +
+      `1️⃣ Agendar cita\n` +
+      `2️⃣ Cancelar cita\n` +
+      `3️⃣ Ver mi próxima cita\n` +
+      `4️⃣ Reprogramar cita`
+    );
+  }
   // ✅ Reinicio manual si escribe hola
   if (text === "hola" || text === "inicio") {
 
@@ -112,6 +127,12 @@ const handleIncomingMessage = async ({
     case "WAITING_RESCHEDULE_TIME":
       return handleRescheduleTime({ text, clinic, conversation, sendMessage });
 
+    case "WAITING_CANCEL_CONFIRMATION":
+      return handleCancelConfirmation({ text, clinic, conversation, sendMessage });
+
+    case "WAITING_RESCHEDULE_CONFIRMATION":
+      return handleRescheduleConfirmation({ text, clinic, conversation, sendMessage });
+
     default:
       return sendMessage(
         "Escribe *inicio* para comenzar a agendar."
@@ -161,25 +182,60 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
       context: {}
     });
 
-    return sendMessage(response);
+    return sendMessage(
+      appendMainMenuOption(response)
+    );
   }
 
-  // ✅ Opción 2 - Cancelar
+  // ✅ Opción 2 - Cancelar (con confirmación)
   if (text === "2") {
 
-    const cancelled = await cancelNextAppointment({
-      clinicId: clinic.id,
-      patientPhone: conversation.patientPhone
+    const now = new Date();
+
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        clinicId: clinic.id,
+        patientPhone: conversation.patientPhone,
+        status: {
+          in: ["scheduled", "confirmed"]
+        },
+        startAt: {
+          gte: now
+        }
+      },
+      orderBy: {
+        startAt: "asc"
+      }
     });
 
-    if (!cancelled) {
+    if (!appointment) {
       return sendMessage(
         "No tienes citas próximas para cancelar."
       );
     }
 
+    const { DateTime } = require("luxon");
+
+    const dateTime = DateTime.fromJSDate(appointment.startAt)
+      .setZone(clinic.timeZone);
+
+    const formattedDate = dateTime.toFormat("dd/MM/yyyy");
+    const formattedTime = dateTime.toFormat("hh:mm a");
+
+    await updateConversation(conversation.id, {
+      state: "WAITING_CANCEL_CONFIRMATION",
+      context: {
+        appointmentId: appointment.id
+      }
+    });
+
     return sendMessage(
-      "✅ Tu cita ha sido cancelada correctamente."
+      "Estás a punto de cancelar tu cita:\n\n" +
+      `📆 Fecha: ${formattedDate}\n` +
+      `⏰ Hora: ${formattedTime}\n\n` +
+      "¿Deseas confirmar?\n\n" +
+      "1️⃣ Sí, cancelar cita\n" +
+      "2️⃣ No, volver al menú"
     );
   }
 
@@ -209,7 +265,9 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
     if (!appointment) {
       return sendMessage(
-        "No tienes citas próximas."
+        appendMainMenuOption(
+          "No tienes citas próximas."
+        )
       );
     }
 
@@ -222,10 +280,12 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     const formattedTime = dateTime.toFormat("hh:mm a");
 
     return sendMessage(
-      "📅 Tu próxima cita:\n\n" +
-      `🦷 Servicio: ${appointment.service.name}\n` +
-      `📆 Fecha: ${formattedDate}\n` +
-      `⏰ Hora: ${formattedTime}`
+      appendMainMenuOption(
+        "📅 Tu próxima cita:\n\n" +
+        `🦷 Servicio: ${appointment.service.name}\n` +
+        `📆 Fecha: ${formattedDate}\n` +
+        `⏰ Hora: ${formattedTime}`
+      )
     );
   }
 
@@ -271,8 +331,10 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     });
 
     return sendMessage(
-      `Vas a reprogramar tu cita de ${service.name}.\n\n` +
-      `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
+      appendMainMenuOption(
+        `Vas a reprogramar tu cita de ${service.name}.\n\n` +
+        `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
+      )
     );
   }
 }
@@ -312,9 +374,11 @@ async function handleServiceSelection({ text, clinic, conversation, sendMessage 
   });
 
   return sendMessage(
-    `Perfecto ✅\n\nHas elegido: ${selectedService.name}\n\n` +
-    `¿Para qué fecha deseas la cita?\n` +
-    `Formato: DD/MM/AAAA`
+    appendMainMenuOption(
+      `Perfecto ✅\n\nHas elegido: ${selectedService.name}\n\n` +
+      `¿Para qué fecha deseas la cita?\n` +
+      `Formato: DD/MM/AAAA`
+    )
   );
 }
 
@@ -348,7 +412,9 @@ async function handleDateSelection({ text, conversation, sendMessage }) {
   });
 
   return sendMessage(
-    "Perfecto ✅\n\n¿A qué hora deseas la cita?\nFormato: HH:mm"
+    appendMainMenuOption(
+      "Perfecto ✅\n\n¿A qué hora deseas la cita?\nFormato: HH:mm"
+    )
   );
 }
 
@@ -372,7 +438,9 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
 
   if (!time) {
     return sendMessage(
-      "Hora inválida.\nUsa formato HH:mm"
+      appendMainMenuOption(
+        "Hora inválida.\nUsa formato HH:mm"
+      )
     );
   }
 
@@ -410,7 +478,7 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
     const formattedDate = `${day}/${month}/${year}`;
 
     // Formatear hora a AM/PM
-    const [hourStr, minute] = text.split(":");
+    const [hourStr, minute] = time.split(":");
     let hour = parseInt(hourStr, 10);
     const ampm = hour >= 12 ? "PM" : "AM";
 
@@ -449,7 +517,9 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
         }
 
         return sendMessage(
-          "Ese horario no está disponible.\nElige otra hora."
+          appendMainMenuOption(
+            "Ese horario no está disponible.\nElige otra hora."
+          )
         );
       }
 
@@ -525,14 +595,22 @@ async function handleRescheduleDate({ text, clinic, conversation, sendMessage })
   const date = parseDate(text);
 
   if (!date) {
-    return sendMessage("Fecha inválida.\nUsa formato DD/MM/AAAA");
+    return sendMessage(
+      appendMainMenuOption(
+        "Fecha inválida.\nUsa formato DD/MM/AAAA"
+      )
+    );
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   if (date < today) {
-    return sendMessage("No puedes elegir una fecha pasada.");
+    return sendMessage(
+      appendMainMenuOption(
+        "No puedes elegir una fecha pasada."
+      )
+    );
   }
 
   const updatedContext = {
@@ -548,7 +626,9 @@ async function handleRescheduleDate({ text, clinic, conversation, sendMessage })
 
   if (!slots.length) {
     return sendMessage(
-      "No hay horarios disponibles para esa fecha.\nElige otra fecha."
+      appendMainMenuOption(
+        "No hay horarios disponibles para esa fecha.\nElige otra fecha."
+      )
     );
   }
 
@@ -570,28 +650,84 @@ async function handleRescheduleDate({ text, clinic, conversation, sendMessage })
     }
   });
 
-  return sendMessage(response);
+  return sendMessage(
+    appendMainMenuOption(response)
+  );
 }
 
 async function handleRescheduleTime({ text, clinic, conversation, sendMessage }) {
 
+  // ✅ Si respondió con número (ej: "1", "2")
+  if (/^\d+$/.test(text) && conversation.context.availableSlots) {
+
+    const index = parseInt(text, 10);
+    const selected = conversation.context.availableSlots[index - 1];
+
+    if (!selected) {
+      return sendMessage(
+        appendMainMenuOption(
+          "Opción inválida. Elige un número válido."
+        )
+      );
+    }
+
+    text = selected;
+  }
+
   const time = parseTime(text);
 
   if (!time) {
-    return sendMessage("Hora inválida.\nUsa formato HH:mm");
+    return sendMessage(
+      appendMainMenuOption(
+        "Hora inválida.\nUsa formato HH:mm"
+      )
+    );
   }
 
   const dateISO = conversation.context.dateISO;
-
   const startAtISO = `${dateISO}T${time}:00`;
 
-  try {
+  // ✅ Ahora NO reprogramamos aún — pedimos confirmación
 
-    await rescheduleAppointment({
-      appointmentId: conversation.context.appointmentId,
+  await updateConversation(conversation.id, {
+    state: "WAITING_RESCHEDULE_CONFIRMATION",
+    context: {
+      ...conversation.context,
+      newStartAtISO: startAtISO
+    }
+  });
+
+  const { DateTime } = require("luxon");
+
+  const dateTime = DateTime.fromISO(startAtISO, {
+    zone: clinic.timeZone
+  });
+
+  const formattedDate = dateTime.toFormat("dd/MM/yyyy");
+  const formattedTime = dateTime.toFormat("hh:mm a");
+
+  return sendMessage(
+    appendMainMenuOption(
+      `Vas a reprogramar tu cita:\n\n` +
+      `📅 Nueva fecha: ${formattedDate}\n` +
+      `⏰ Nueva hora: ${formattedTime}\n\n` +
+      `¿Deseas confirmar?\n\n` +
+      `1️⃣ Confirmar reprogramación\n` +
+      `2️⃣ Cancelar operación`
+    )
+  );
+}
+
+async function handleCancelConfirmation({ text, clinic, conversation, sendMessage }) {
+
+  // ✅ Confirmar cancelación
+  if (text === "1") {
+
+    const { cancelNextUpcomingAppointment } = require("./bookingService");
+
+    const cancelled = await cancelNextUpcomingAppointment({
       clinicId: clinic.id,
-      serviceId: conversation.context.serviceId,
-      newStartAt: startAtISO
+      patientPhone: conversation.patientPhone
     });
 
     await updateConversation(conversation.id, {
@@ -599,33 +735,133 @@ async function handleRescheduleTime({ text, clinic, conversation, sendMessage })
       active: false
     });
 
-    const [year, month, day] = dateISO.split("-");
-    const formattedDate = `${day}/${month}/${year}`;
-
-    const [hourStr, minute] = time.split(":");
-    let hour = parseInt(hourStr, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-
-    if (hour === 0) hour = 12;
-    if (hour > 12) hour -= 12;
-
-    const formattedTime = `${hour}:${minute} ${ampm}`;
-
-    return sendMessage(
-      `✅ Tu cita ha sido reprogramada\n\n` +
-      `📌 Servicio: ${conversation.context.serviceName}\n` +
-      `📅 Fecha: ${formattedDate}\n` +
-      `⏰ Hora: ${formattedTime}`
-    );
-
-  } catch (error) {
-
-    if (error.message === "Time slot not available") {
-      return sendMessage("Ese horario no está disponible. Elige otra hora.");
+    if (!cancelled) {
+      return sendMessage(
+        "No se encontró una cita para cancelar.\n\nEscribe *inicio* para volver al menú."
+      );
     }
 
-    return sendMessage("Ocurrió un error.\nEscribe *inicio* para comenzar nuevamente.");
+    const { DateTime } = require("luxon");
+
+    const dateTime = DateTime.fromJSDate(cancelled.startAt)
+      .setZone(clinic.timeZone);
+
+    const formattedDate = dateTime.toFormat("dd/MM/yyyy");
+    const formattedTime = dateTime.toFormat("hh:mm a");
+
+    return sendMessage(
+      "✅ Tu cita ha sido cancelada correctamente.\n\n" +
+      `📆 Fecha: ${formattedDate}\n` +
+      `⏰ Hora: ${formattedTime}`
+    );
   }
+
+  // ✅ Cancelar operación (no cancelar cita)
+  if (text === "2") {
+
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      `Operación cancelada ✅\n\n¿Qué deseas hacer?\n\n` +
+      `1️⃣ Agendar cita\n` +
+      `2️⃣ Cancelar cita\n` +
+      `3️⃣ Ver mi próxima cita\n` +
+      `4️⃣ Reprogramar cita`
+    );
+  }
+
+  return sendMessage(
+    "Por favor responde:\n\n1️⃣ Sí, cancelar cita\n2️⃣ No, volver al menú"
+  );
+}
+
+function appendMainMenuOption(text) {
+  return `${text}\n\n0️⃣ Volver al menú principal`;
+}
+
+async function handleRescheduleConfirmation({ text, clinic, conversation, sendMessage }) {
+
+  if (text === "1") {
+
+    const { appointmentId, serviceId, newStartAtISO } = conversation.context;
+
+    if (!newStartAtISO) {
+      return sendMessage(
+        "Ocurrió un error con la nueva fecha.\nEscribe *inicio* para comenzar nuevamente."
+      );
+    }
+
+    try {
+
+      await rescheduleAppointment({
+        appointmentId,
+        clinicId: clinic.id,
+        serviceId,
+        newStartAt: newStartAtISO
+      });
+
+      await updateConversation(conversation.id, {
+        state: "COMPLETED",
+        active: false
+      });
+
+      const { DateTime } = require("luxon");
+
+      const dateTime = DateTime.fromISO(newStartAtISO, {
+        zone: clinic.timeZone
+      });
+
+      const formattedDate = dateTime.toFormat("dd/MM/yyyy");
+      const formattedTime = dateTime.toFormat("hh:mm a");
+
+      return sendMessage(
+        `✅ Tu cita ha sido reprogramada\n\n` +
+        `📅 Fecha: ${formattedDate}\n` +
+        `⏰ Hora: ${formattedTime}`
+      );
+
+    } catch (error) {
+
+      if (error.message === "Time slot not available") {
+        return sendMessage(
+          appendMainMenuOption(
+            "Ese horario ya no está disponible.\nElige otro."
+          )
+        );
+      }
+
+      console.error("RESCHEDULE CONFIRM ERROR:", error.message);
+
+      return sendMessage(
+        "Ocurrió un error.\nEscribe *inicio* para comenzar nuevamente."
+      );
+    }
+  }
+
+  if (text === "2") {
+
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      `Operación cancelada ✅\n\n` +
+      `1️⃣ Agendar cita\n` +
+      `2️⃣ Cancelar cita\n` +
+      `3️⃣ Ver mi próxima cita\n` +
+      `4️⃣ Reprogramar cita`
+    );
+  }
+
+  return sendMessage(
+    appendMainMenuOption(
+      "Responde:\n\n1️⃣ Confirmar reprogramación\n2️⃣ Cancelar operación"
+    )
+  );
 }
 
 module.exports = {

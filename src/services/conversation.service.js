@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-const EXPIRATION_MINUTES = 0.2;
+const EXPIRATION_MINUTES = 1;
 
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60000);

@@ -196,7 +196,49 @@ const rescheduleAppointment = async ({
   return updated;
 };
 
+const cancelNextUpcomingAppointment = async ({
+  clinicId,
+  patientPhone
+}) => {
+
+  if (!clinicId || !patientPhone) {
+    throw new Error("Missing required cancel data");
+  }
+
+  const now = new Date();
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      clinicId,
+      patientPhone,
+      status: {
+        in: ["scheduled", "confirmed"]
+      },
+      startAt: {
+        gte: now
+      }
+    },
+    orderBy: {
+      startAt: "asc"
+    }
+  });
+
+  if (!appointment) {
+    return null;
+  }
+
+  const updated = await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: {
+      status: "cancelled"
+    }
+  });
+
+  return updated;
+};
+
 module.exports = {
   createAppointment,
-  rescheduleAppointment
+  rescheduleAppointment,
+  cancelNextUpcomingAppointment
 };
