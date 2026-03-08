@@ -74,7 +74,7 @@ const handleIncomingMessage = async ({
       `4️⃣ Reprogramar cita`
     );
   }
-  // ✅ Reinicio manual si escribe hola
+
   if (text === "hola" || text === "inicio") {
 
     await updateConversation(conversation.id, {
@@ -83,16 +83,14 @@ const handleIncomingMessage = async ({
     });
 
     return sendMessage(
-      `Hola 👋
-
-    ¿Qué deseas hacer?
-
-    1️⃣ Agendar cita
-    2️⃣ Cancelar cita
-    3️⃣ Ver mi próxima cita
-    4️⃣ Reprogramar cita`
+      "Hola 👋\n\n" +
+      "¿Qué deseas hacer?\n\n" +
+      "1️⃣ Agendar cita\n" +
+      "2️⃣ Cancelar cita\n" +
+      "3️⃣ Ver mi próxima cita\n" +
+      "4️⃣ Reprogramar cita"
     );
-      }
+  }
 
 
   // ✅ Reinicio forzado si vuelve a escribir palabra clave
@@ -155,14 +153,12 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
   if (text !== "1" && text !== "2" && text !== "3" && text !== "4") {
     return sendMessage(
-      `Hola 👋
-
-    ¿Qué deseas hacer?
-
-    1️⃣ Agendar cita
-    2️⃣ Cancelar cita
-    3️⃣ Ver mi próxima cita
-    4️⃣ Reprogramar cita`
+      "Hola 👋\n\n" +
+      "¿Qué deseas hacer?\n\n" +
+      "1️⃣ Agendar cita\n" +
+      "2️⃣ Cancelar cita\n" +
+      "3️⃣ Ver mi próxima cita\n" +
+      "4️⃣ Reprogramar cita"
     );
   }
 
