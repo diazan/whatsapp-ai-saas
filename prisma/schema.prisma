@@ -32,6 +32,7 @@ model Service {
   name        String
   durationMin Int
   active      Boolean @default(true)
+  displayOrder Int @default(0)
 
   createdAt DateTime @default(now())
 

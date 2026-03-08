@@ -138,7 +138,11 @@ const handleIncomingMessage = async ({
 
     case "WAITING_CANCEL_SELECTION":
       return handleCancelSelection({ text, clinic, conversation, sendMessage });
+    console.log("STATE ACTUAL:", conversation.state);
 
+    case "WAITING_VIEW_OTHER_APPOINTMENTS":
+      return handleViewOtherAppointments({ clinic, conversation, sendMessage });
+    
     default:
       return sendMessage(
         "Escribe *inicio* para comenzar a agendar."
@@ -168,6 +172,9 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
       where: {
         clinicId: clinic.id,
         active: true
+      },
+      orderBy: {
+        displayOrder: "asc"
       }
     });
 
@@ -281,12 +288,12 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     );
   }
 
-  // ✅ Opción 3 - Ver próxima cita
+    // ✅ Opción 3 - Ver próxima cita
   if (text === "3") {
 
     const now = new Date();
 
-    const appointment = await prisma.appointment.findFirst({
+    const appointments = await prisma.appointment.findMany({
       where: {
         clinicId: clinic.id,
         patientPhone: conversation.patientPhone,
@@ -305,7 +312,7 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
       }
     });
 
-    if (!appointment) {
+    if (!appointments.length) {
       return sendMessage(
         appendMainMenuOption(
           "No tienes citas próximas."
@@ -315,19 +322,44 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
     const { DateTime } = require("luxon");
 
-    const dateTime = DateTime.fromJSDate(appointment.startAt)
+    const nextAppointment = appointments[0];
+
+    const dateTime = DateTime.fromJSDate(nextAppointment.startAt)
       .setZone(clinic.timeZone);
 
     const formattedDate = dateTime.toFormat("dd/MM/yyyy");
     const formattedTime = dateTime.toFormat("hh:mm a");
 
+    let response =
+      "📅 Tu próxima cita:\n\n" +
+      `🦷 Servicio: ${nextAppointment.service.name}\n` +
+      `📆 Fecha: ${formattedDate}\n` +
+      `⏰ Hora: ${formattedTime}`;
+
+    // ✅ Si tiene más de una cita
+    if (appointments.length > 1) {
+
+      await updateConversation(conversation.id, {
+        state: "WAITING_VIEW_OTHER_APPOINTMENTS",
+        context: {
+          remainingAppointments: appointments.slice(1).map(a => ({
+            id: a.id,
+            serviceName: a.service.name,
+            startAt: a.startAt
+          }))
+        }
+      });
+
+      response +=
+        "\n\n1️⃣ Ver otras citas";
+
+      return sendMessage(
+        appendMainMenuOption(response)
+      );
+    }
+
     return sendMessage(
-      appendMainMenuOption(
-        "📅 Tu próxima cita:\n\n" +
-        `🦷 Servicio: ${appointment.service.name}\n` +
-        `📆 Fecha: ${formattedDate}\n` +
-        `⏰ Hora: ${formattedTime}`
-      )
+      appendMainMenuOption(response)
     );
   }
 
@@ -440,7 +472,9 @@ async function handleServiceSelection({ text, clinic, conversation, sendMessage 
 
   if (!selectedService) {
     return sendMessage(
-      "Opción inválida. Intenta nuevamente."
+      appendMainMenuOption(
+        "Opción inválida. Intenta nuevamente."
+      )
     );
   }
 
@@ -477,7 +511,9 @@ async function handleDateSelection({ text, conversation, sendMessage }) {
 
   if (date < today) {
     return sendMessage(
-      "No puedes agendar en una fecha pasada."
+      appendMainMenuOption(
+        "No puedes agendar en una fecha pasada.\nElige otra fecha."
+      )
     );
   }
 
@@ -593,10 +629,12 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
 
         if (suggestions.length) {
           return sendMessage(
-            "Ese horario no está disponible.\n\n" +
-            "Estos horarios están libres:\n" +
-            suggestions.join("\n") +
-            "\n\nEscribe uno en formato HH:mm"
+            appendMainMenuOption(
+              "Ese horario no está disponible.\n\n" +
+              "Estos horarios están libres:\n" +
+              suggestions.join("\n") +
+              "\n\nEscribe uno en formato HH:mm"
+            )
           );
         }
 
@@ -609,7 +647,9 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
 
       if (error.message === "Cannot book in the past") {
         return sendMessage(
-          "No puedes agendar en una hora pasada.\nElige otra hora."
+          appendMainMenuOption(
+            "No puedes agendar en una hora pasada.\nElige otra hora."
+          )
         );
       }
 
@@ -618,7 +658,9 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
         error.message === "La clínica no atiende ese día"
       ) {
         return sendMessage(
-          error.message + "\nElige otra hora."
+          appendMainMenuOption(
+            error.message + "\nElige otra hora."
+          )
         );
       }
 
@@ -953,9 +995,9 @@ async function handleRescheduleConfirmation({ text, clinic, conversation, sendMe
   }
 
   return sendMessage(
-    appendMainMenuOption(
-      "Responde:\n\n1️⃣ Confirmar reprogramación\n2️⃣ Cancelar operación"
-    )
+    "Responde:\n\n" +
+    "1️⃣ Confirmar reprogramación\n" +
+    "2️⃣ Cancelar operación"
   );
 }
 
@@ -1029,9 +1071,119 @@ async function handleCancelSelection({ text, clinic, conversation, sendMessage }
   });
 
   return sendMessage(
-    "¿Deseas confirmar la cancelación?\n\n" +
-    "1️⃣ Sí, cancelar cita\n" +
-    "2️⃣ No, volver al menú"
+    appendMainMenuOption(
+      "¿Deseas confirmar la cancelación?\n\n" +
+      "1️⃣ Sí, cancelar cita\n" +
+      "2️⃣ No, volver al menú"
+    )
+  );
+}
+
+async function handleViewOtherAppointments({ clinic, conversation, sendMessage }) {
+
+  const remaining = conversation.context.remainingAppointments;
+
+  if (!remaining || !remaining.length) {
+
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      appendMainMenuOption("No hay más citas.")
+    );
+  }
+
+  const { DateTime } = require("luxon");
+
+  let response = "📅 Tus otras citas:\n\n";
+
+  remaining.forEach((appt, index) => {
+
+    const dateTime = DateTime.fromJSDate(new Date(appt.startAt))
+      .setZone(clinic.timeZone);
+
+    response +=
+      `• ${appt.serviceName} - ` +
+      `${dateTime.toFormat("dd/MM/yyyy")} ` +
+      `${dateTime.toFormat("hh:mm a")}\n`;
+  });
+
+  // ✅ Después de mostrar, volvemos a IDLE
+  await updateConversation(conversation.id, {
+    state: "IDLE",
+    context: {}
+  });
+
+  return sendMessage(
+    appendMainMenuOption(response)
+  );
+}
+
+async function handleOtherAppointmentAction({ text, clinic, conversation, sendMessage }) {
+
+  const { appointmentId } = conversation.context;
+
+  if (!appointmentId) {
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      appendMainMenuOption("Ocurrió un error. Escribe inicio para continuar.")
+    );
+  }
+
+  // ✅ Cancelar esta cita
+  if (text === "1") {
+
+    await updateConversation(conversation.id, {
+      state: "WAITING_CANCEL_CONFIRMATION",
+      context: {
+        appointmentId
+      }
+    });
+
+    return sendMessage(
+      "¿Deseas confirmar la cancelación?\n\n" +
+      "1️⃣ Sí, cancelar cita\n" +
+      "2️⃣ No, volver al menú"
+    );
+  }
+
+  // ✅ Reprogramar esta cita
+  if (text === "2") {
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { service: true }
+    });
+
+    await updateConversation(conversation.id, {
+      state: "WAITING_RESCHEDULE_DATE",
+      context: {
+        appointmentId,
+        serviceId: appointment.serviceId,
+        serviceName: appointment.service.name,
+        durationMin: appointment.service.durationMin
+      }
+    });
+
+    return sendMessage(
+      appendMainMenuOption(
+        `Vas a reprogramar tu cita de ${appointment.service.name}.\n\n` +
+        `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
+      )
+    );
+  }
+
+  return sendMessage(
+    "Responde:\n\n" +
+    "1️⃣ Cancelar esta cita\n" +
+    "2️⃣ Reprogramar esta cita\n" +
+    "0️⃣ Volver al menú principal"
   );
 }
 
