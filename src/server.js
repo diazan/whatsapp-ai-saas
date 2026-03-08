@@ -1,8 +1,8 @@
 console.log("🚀 SERVER STARTED");
 require("dotenv").config();
 
+const { startReminderJob } = require("./services/reminder.service");
 const express = require("express");
-
 const testRoutes = require("./routes/test.routes");
 const webhookRoutes = require("./routes/webhook");
 
@@ -23,4 +23,5 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
+  startReminderJob(); // ✅ iniciar cron
 });

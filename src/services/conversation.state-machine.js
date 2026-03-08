@@ -133,6 +133,12 @@ const handleIncomingMessage = async ({
     case "WAITING_RESCHEDULE_CONFIRMATION":
       return handleRescheduleConfirmation({ text, clinic, conversation, sendMessage });
 
+    case "WAITING_RESCHEDULE_SELECTION":
+      return handleRescheduleSelection({ text, clinic, conversation, sendMessage });
+
+    case "WAITING_CANCEL_SELECTION":
+      return handleCancelSelection({ text, clinic, conversation, sendMessage });
+
     default:
       return sendMessage(
         "Escribe *inicio* para comenzar a agendar."
@@ -187,12 +193,12 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     );
   }
 
-  // ✅ Opción 2 - Cancelar (con confirmación)
+  // ✅ Opción 2 - Cancelar
   if (text === "2") {
 
     const now = new Date();
 
-    const appointment = await prisma.appointment.findFirst({
+    const appointments = await prisma.appointment.findMany({
       where: {
         clinicId: clinic.id,
         patientPhone: conversation.patientPhone,
@@ -203,39 +209,75 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
           gte: now
         }
       },
+      include: {
+        service: true
+      },
       orderBy: {
         startAt: "asc"
       }
     });
 
-    if (!appointment) {
+    if (!appointments.length) {
       return sendMessage(
         "No tienes citas próximas para cancelar."
       );
     }
 
+    // ✅ Si solo hay una, mantener comportamiento actual
+    if (appointments.length === 1) {
+
+      const appointment = appointments[0];
+
+      await updateConversation(conversation.id, {
+        state: "WAITING_CANCEL_CONFIRMATION",
+        context: {
+          appointmentId: appointment.id
+        }
+      });
+
+      const { DateTime } = require("luxon");
+
+      const dateTime = DateTime.fromJSDate(appointment.startAt)
+        .setZone(clinic.timeZone);
+
+      return sendMessage(
+        "Estás a punto de cancelar tu cita:\n\n" +
+        `📆 Fecha: ${dateTime.toFormat("dd/MM/yyyy")}\n` +
+        `⏰ Hora: ${dateTime.toFormat("hh:mm a")}\n\n` +
+        "¿Deseas confirmar?\n\n" +
+        "1️⃣ Sí, cancelar cita\n" +
+        "2️⃣ No, volver al menú"
+      );
+    }
+
+    // ✅ Si hay varias, mostrar menú numerado
     const { DateTime } = require("luxon");
 
-    const dateTime = DateTime.fromJSDate(appointment.startAt)
-      .setZone(clinic.timeZone);
+    let response = "Tienes las siguientes citas:\n\n";
 
-    const formattedDate = dateTime.toFormat("dd/MM/yyyy");
-    const formattedTime = dateTime.toFormat("hh:mm a");
+    appointments.forEach((appt, index) => {
+      const dateTime = DateTime.fromJSDate(appt.startAt)
+        .setZone(clinic.timeZone);
+
+      response +=
+        `${index + 1}️⃣ ${appt.service.name} - ` +
+        `${dateTime.toFormat("dd/MM/yyyy")} ` +
+        `${dateTime.toFormat("hh:mm a")}\n`;
+    });
+
+    response += "\nResponde con el número de la cita que deseas cancelar.";
 
     await updateConversation(conversation.id, {
-      state: "WAITING_CANCEL_CONFIRMATION",
+      state: "WAITING_CANCEL_SELECTION",
       context: {
-        appointmentId: appointment.id
+        appointmentsList: appointments.map(a => ({
+          id: a.id
+        }))
       }
     });
 
     return sendMessage(
-      "Estás a punto de cancelar tu cita:\n\n" +
-      `📆 Fecha: ${formattedDate}\n` +
-      `⏰ Hora: ${formattedTime}\n\n` +
-      "¿Deseas confirmar?\n\n" +
-      "1️⃣ Sí, cancelar cita\n" +
-      "2️⃣ No, volver al menú"
+      appendMainMenuOption(response)
     );
   }
 
@@ -289,12 +331,12 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     );
   }
 
-    // ✅ Opción 4 - Reprogramar
+  // ✅ Opción 4 - Reprogramar
   if (text === "4") {
 
     const now = new Date();
 
-    const appointment = await prisma.appointment.findFirst({
+    const appointments = await prisma.appointment.findMany({
       where: {
         clinicId: clinic.id,
         patientPhone: conversation.patientPhone,
@@ -305,36 +347,74 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
           gte: now
         }
       },
+      include: {
+        service: true
+      },
       orderBy: {
         startAt: "asc"
       }
     });
 
-    if (!appointment) {
+    if (!appointments.length) {
       return sendMessage(
         "No tienes citas próximas para reprogramar."
       );
     }
 
-    const service = await prisma.service.findUnique({
-      where: { id: appointment.serviceId }
+    // ✅ Si solo tiene una, mantener comportamiento actual
+    if (appointments.length === 1) {
+
+      const appointment = appointments[0];
+
+      await updateConversation(conversation.id, {
+        state: "WAITING_RESCHEDULE_DATE",
+        context: {
+          appointmentId: appointment.id,
+          serviceId: appointment.serviceId,
+          serviceName: appointment.service.name,
+          durationMin: appointment.service.durationMin
+        }
+      });
+
+      return sendMessage(
+        appendMainMenuOption(
+          `Vas a reprogramar tu cita de ${appointment.service.name}.\n\n` +
+          `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
+        )
+      );
+    }
+
+    // ✅ Si tiene varias, mostrar menú numerado
+    let response = "Tienes las siguientes citas:\n\n";
+
+    const { DateTime } = require("luxon");
+
+    appointments.forEach((appt, index) => {
+      const dateTime = DateTime.fromJSDate(appt.startAt)
+        .setZone(clinic.timeZone);
+
+      response +=
+        `${index + 1}️⃣ ${appt.service.name} - ` +
+        `${dateTime.toFormat("dd/MM/yyyy")} ` +
+        `${dateTime.toFormat("hh:mm a")}\n`;
     });
 
+    response += "\nResponde con el número de la cita que deseas reprogramar.";
+
     await updateConversation(conversation.id, {
-      state: "WAITING_RESCHEDULE_DATE",
+      state: "WAITING_RESCHEDULE_SELECTION",
       context: {
-        appointmentId: appointment.id,
-        serviceId: appointment.serviceId,
-        serviceName: service.name,
-        durationMin: service.durationMin
+        appointmentsList: appointments.map(a => ({
+          id: a.id,
+          serviceId: a.serviceId,
+          serviceName: a.service.name,
+          durationMin: a.service.durationMin
+        }))
       }
     });
 
     return sendMessage(
-      appendMainMenuOption(
-        `Vas a reprogramar tu cita de ${service.name}.\n\n` +
-        `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
-      )
+      appendMainMenuOption(response)
     );
   }
 }
@@ -466,8 +546,8 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
     });
 
     await updateConversation(conversation.id, {
-      state: "COMPLETED",
-      active: false
+      state: "IDLE",
+      context: {}
     });
 
     const serviceName = conversation.context.serviceName;
@@ -492,7 +572,11 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
       `🦷 Servicio: ${serviceName}\n` +
       `📅 Fecha: ${formattedDate}\n` +
       `⏰ Hora: ${formattedTime}\n\n` +
-      `Te esperamos.`
+      "¿Qué deseas hacer ahora?\n\n" +
+      "1️⃣ Agendar cita\n" +
+      "2️⃣ Cancelar cita\n" +
+      "3️⃣ Ver mi próxima cita\n" +
+      "4️⃣ Reprogramar cita"
     );
 
     } catch (error) {
@@ -723,16 +807,17 @@ async function handleCancelConfirmation({ text, clinic, conversation, sendMessag
   // ✅ Confirmar cancelación
   if (text === "1") {
 
-    const { cancelNextUpcomingAppointment } = require("./bookingService");
+    
+    const appointmentId = conversation.context.appointmentId;
 
-    const cancelled = await cancelNextUpcomingAppointment({
-      clinicId: clinic.id,
-      patientPhone: conversation.patientPhone
+    const cancelled = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "cancelled" }
     });
 
     await updateConversation(conversation.id, {
-      state: "COMPLETED",
-      active: false
+      state: "IDLE",
+      context: {}
     });
 
     if (!cancelled) {
@@ -752,7 +837,12 @@ async function handleCancelConfirmation({ text, clinic, conversation, sendMessag
     return sendMessage(
       "✅ Tu cita ha sido cancelada correctamente.\n\n" +
       `📆 Fecha: ${formattedDate}\n` +
-      `⏰ Hora: ${formattedTime}`
+      `⏰ Hora: ${formattedTime}\n\n` +
+      "¿Qué deseas hacer ahora?\n\n" +
+      "1️⃣ Agendar cita\n" +
+      "2️⃣ Cancelar cita\n" +
+      "3️⃣ Ver mi próxima cita\n" +
+      "4️⃣ Reprogramar cita"
     );
   }
 
@@ -804,8 +894,8 @@ async function handleRescheduleConfirmation({ text, clinic, conversation, sendMe
       });
 
       await updateConversation(conversation.id, {
-        state: "COMPLETED",
-        active: false
+        state: "IDLE",
+        context: {}
       });
 
       const { DateTime } = require("luxon");
@@ -820,7 +910,12 @@ async function handleRescheduleConfirmation({ text, clinic, conversation, sendMe
       return sendMessage(
         `✅ Tu cita ha sido reprogramada\n\n` +
         `📅 Fecha: ${formattedDate}\n` +
-        `⏰ Hora: ${formattedTime}`
+        `⏰ Hora: ${formattedTime}\n\n` +
+        "¿Qué deseas hacer ahora?\n\n" +
+        "1️⃣ Agendar cita\n" +
+        "2️⃣ Cancelar cita\n" +
+        "3️⃣ Ver mi próxima cita\n" +
+        "4️⃣ Reprogramar cita"
       );
 
     } catch (error) {
@@ -861,6 +956,82 @@ async function handleRescheduleConfirmation({ text, clinic, conversation, sendMe
     appendMainMenuOption(
       "Responde:\n\n1️⃣ Confirmar reprogramación\n2️⃣ Cancelar operación"
     )
+  );
+}
+
+async function handleRescheduleSelection({ text, clinic, conversation, sendMessage }) {
+
+  const index = parseInt(text, 10);
+
+  if (isNaN(index)) {
+    return sendMessage(
+      appendMainMenuOption(
+        "Por favor responde con el número de la cita que deseas reprogramar."
+      )
+    );
+  }
+
+  const selected = conversation.context.appointmentsList[index - 1];
+
+  if (!selected) {
+    return sendMessage(
+      appendMainMenuOption(
+        "Opción inválida. Elige un número válido."
+      )
+    );
+  }
+
+  await updateConversation(conversation.id, {
+    state: "WAITING_RESCHEDULE_DATE",
+    context: {
+      appointmentId: selected.id,
+      serviceId: selected.serviceId,
+      serviceName: selected.serviceName,
+      durationMin: selected.durationMin
+    }
+  });
+
+  return sendMessage(
+    appendMainMenuOption(
+      `Vas a reprogramar tu cita de ${selected.serviceName}.\n\n` +
+      `¿Para qué nueva fecha?\nFormato: DD/MM/AAAA`
+    )
+  );
+}
+
+async function handleCancelSelection({ text, clinic, conversation, sendMessage }) {
+
+  const index = parseInt(text, 10);
+
+  if (isNaN(index)) {
+    return sendMessage(
+      appendMainMenuOption(
+        "Por favor responde con el número de la cita que deseas cancelar."
+      )
+    );
+  }
+
+  const selected = conversation.context.appointmentsList[index - 1];
+
+  if (!selected) {
+    return sendMessage(
+      appendMainMenuOption(
+        "Opción inválida. Elige un número válido."
+      )
+    );
+  }
+
+  await updateConversation(conversation.id, {
+    state: "WAITING_CANCEL_CONFIRMATION",
+    context: {
+      appointmentId: selected.id
+    }
+  });
+
+  return sendMessage(
+    "¿Deseas confirmar la cancelación?\n\n" +
+    "1️⃣ Sí, cancelar cita\n" +
+    "2️⃣ No, volver al menú"
   );
 }
 

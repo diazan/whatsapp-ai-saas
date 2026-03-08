@@ -1,5 +1,10 @@
 const { getClinicByPhoneNumberId } = require("../services/clinicService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
+const {
+  getReminderWindowAppointment
+} = require("../services/bookingService");
+
+const prisma = require("../lib/prisma"); // para confirmar/cancelar cita
 
 const processedMessages = new Set();
 // ✅ Protección simple anti-duplicado en memoria (suficiente para MVP)
@@ -33,7 +38,7 @@ const handleWebhook = async (req, res) => {
 
     const message = value.messages[0];
 
-    // ✅ 3. Protección anti-duplicado (Meta puede reenviar eventos)
+    // ✅ 3. Protección anti-duplicado
     if (processedMessages.has(message.id)) {
       console.log("Duplicate message ignored:", message.id);
       return;
@@ -41,10 +46,9 @@ const handleWebhook = async (req, res) => {
 
     processedMessages.add(message.id);
 
-    // Limpieza básica de memoria (evita crecimiento infinito)
     setTimeout(() => {
       processedMessages.delete(message.id);
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 5 * 60 * 1000);
 
     // ✅ 4. Ignorar mensajes enviados por el propio negocio
     if (message.from === phoneNumberId) {
@@ -76,7 +80,64 @@ const handleWebhook = async (req, res) => {
 
     const from = message.from;
 
-    // ✅ 6. Enviar respuesta
+    // ✅ INTERCEPTAR RESPUESTA A RECORDATORIO (ventana 23–24h exacta)
+    const reminderAppointment = await getReminderWindowAppointment({
+      clinicId: clinic.id,
+      patientPhone: from
+    });
+
+    if (reminderAppointment) {
+
+      // ✅ CONFIRMAR
+      if (incomingText === "1") {
+
+        await prisma.appointment.update({
+          where: { id: reminderAppointment.id },
+          data: { status: "confirmed" }
+        });
+
+        await sendWhatsAppMessage({
+          accessToken: clinic.accessToken,
+          phoneNumberId: clinic.phoneNumberId,
+          to: from,
+          message: "✅ Tu cita ha sido confirmada. ¡Te esperamos!"
+        });
+
+        return;
+      }
+
+      // ✅ CANCELAR
+      if (incomingText === "2") {
+
+        await prisma.appointment.update({
+          where: { id: reminderAppointment.id },
+          data: { status: "cancelled" }
+        });
+
+        await sendWhatsAppMessage({
+          accessToken: clinic.accessToken,
+          phoneNumberId: clinic.phoneNumberId,
+          to: from,
+          message:
+            "✅ Tu cita ha sido cancelada.\nSi deseas agendar nuevamente, escríbenos cuando quieras."
+        });
+
+        return;
+      }
+
+      // ✅ RESPUESTA INVÁLIDA DENTRO DEL CONTEXTO DE REMINDER
+      await sendWhatsAppMessage({
+        accessToken: clinic.accessToken,
+        phoneNumberId: clinic.phoneNumberId,
+        to: from,
+        message:
+          "Por favor responde con el número de una opción:\n\n1️⃣ Confirmar asistencia\n2️⃣ Cancelar cita"
+      });
+
+      return;
+    }
+
+    // ✅ Flujo normal (state machine)
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
 
     await handleIncomingMessage({
@@ -94,10 +155,8 @@ const handleWebhook = async (req, res) => {
       }
     });
 
-
   } catch (error) {
     console.error("❌ Webhook internal error:", error.message);
-    // ⚠️ NO devolver nada aquí, ya enviamos 200 arriba
   }
 };
 

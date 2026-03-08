@@ -237,8 +237,72 @@ const cancelNextUpcomingAppointment = async ({
   return updated;
 };
 
+const getNextUpcomingAppointment = async ({
+  clinicId,
+  patientPhone
+}) => {
+
+  if (!clinicId || !patientPhone) {
+    throw new Error("Missing required data");
+  }
+
+  const now = new Date();
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      clinicId,
+      patientPhone,
+      status: {
+        in: ["scheduled", "confirmed"]
+      },
+      startAt: {
+        gte: now
+      }
+    },
+    orderBy: {
+      startAt: "asc"
+    }
+  });
+
+  return appointment;
+};
+
+const getReminderWindowAppointment = async ({
+  clinicId,
+  patientPhone
+}) => {
+
+  if (!clinicId || !patientPhone) {
+    throw new Error("Missing required data");
+  }
+
+  const now = new Date();
+
+  const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      clinicId,
+      patientPhone,
+      status: "scheduled",
+      startAt: {
+        gte: windowStart,
+        lte: windowEnd
+      }
+    },
+    orderBy: {
+      startAt: "asc"
+    }
+  });
+
+  return appointment;
+};
+
 module.exports = {
   createAppointment,
   rescheduleAppointment,
-  cancelNextUpcomingAppointment
+  cancelNextUpcomingAppointment,
+  getNextUpcomingAppointment,
+  getReminderWindowAppointment
 };
