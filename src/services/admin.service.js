@@ -84,7 +84,13 @@ const updateAppointmentStatus = async ({
   appointmentId,
   status,
 }) => {
-  const allowedStatuses = ["scheduled", "confirmed", "cancelled"];
+  const allowedStatuses = [
+    "scheduled",
+    "confirmed",
+    "cancelled",
+    "attended",
+    "no_show",
+  ];
 
   if (!allowedStatuses.includes(status)) {
     throw new Error("Invalid status");
@@ -99,6 +105,28 @@ const updateAppointmentStatus = async ({
 
   if (!appointment) {
     throw new Error("Appointment not found");
+  }
+
+  const now = new Date();
+
+  // ✅ Reglas de negocio
+
+  // No permitir marcar asistencia si la cita es futura
+  if (
+    (status === "attended" || status === "no_show") &&
+    appointment.startAt > now
+  ) {
+    throw new Error(
+      "Cannot mark attendance for a future appointment"
+    );
+  }
+
+  // No permitir cambiar estado si ya está finalizado
+  if (
+    appointment.status === "attended" ||
+    appointment.status === "no_show"
+  ) {
+    throw new Error("Cannot modify a finalized appointment");
   }
 
   const updated = await prisma.appointment.update({
