@@ -15,11 +15,14 @@ model Clinic {
   status        String   @default("active")
   createdAt     DateTime @default(now())
 
-  timeZone String @default("America/Mexico_City") // 👈 AQUÍ
+  timeZone String @default("America/Mexico_City")
+
+  email        String?  @unique
+  passwordHash String?
 
   services      Service[]
   appointments  Appointment[]
-  conversations Conversation[] // 👈 AGREGAR ESTA LÍNEA
+  conversations Conversation[]
   schedules     ClinicSchedule[]
 }
 
