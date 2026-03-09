@@ -1,25 +1,37 @@
 console.log("🚀 SERVER STARTED");
 require("dotenv").config();
 
-const { startReminderJob } = require("./services/reminder.service");
+
 const express = require("express");
+const { startReminderJob } = require("./services/reminder.service");
 const cors = require("cors"); // ✅ agregar
 const testRoutes = require("./routes/test.routes");
 const webhookRoutes = require("./routes/webhook");
 const adminRoutes = require("./routes/admin.routes");
-
 const app = express();
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
 
-// ✅ Configuración CORS segura
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000", // futuro dashboard en local
-    ],
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
+  res.header("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
 
 app.use(express.json());
 
