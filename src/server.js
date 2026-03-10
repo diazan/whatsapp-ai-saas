@@ -13,12 +13,24 @@ const webhookRoutes = require("./routes/webhook");
 const requestLogger = require('./middleware/requestLogger');
 const adminRoutes = require("./routes/admin.routes");
 const app = express();
+
+app.use(
+  cors({
+    origin: [
+      "https://whatsapp-admin-dashboard-ecru.vercel.app"
+    ],
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true
+  })
+);
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
 ];
 app.use(express.json());
 app.use(requestLogger);
+
+
 logger.info('✅ Logger inicializado correctamente');
 
 app.use((req, res, next) => {
