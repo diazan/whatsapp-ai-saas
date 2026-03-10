@@ -11,8 +11,7 @@ const processedMessages = new Set();
 
 const handleWebhook = async (req, res) => {
   console.log("🔥 WEBHOOK HIT");
-  console.log("BODY COMPLETO:", JSON.stringify(req.body, null, 2));
-
+  
   // ✅ 1. RESPONDER INMEDIATAMENTE A META
   res.sendStatus(200);
 
@@ -26,8 +25,7 @@ const handleWebhook = async (req, res) => {
 
     const phoneNumberId = value.metadata?.phone_number_id;
 
-    console.log("PHONE NUMBER ID:", phoneNumberId);
-
+   
     if (!phoneNumberId) {
       console.log("No phoneNumberId found");
       return;
@@ -142,6 +140,27 @@ const handleWebhook = async (req, res) => {
 
     // ✅ Flujo normal (state machine)
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
+
+    const { handleSalesBotMessage } = require("../services/salesBot.service");
+
+const isDemoClinic =
+  clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID;
+
+if (isDemoClinic) {
+  return handleSalesBotMessage({
+    clinic,
+    message: incomingText,
+    patientPhone: from,
+    sendMessage: async (text) => {
+      await sendWhatsAppMessage({
+        accessToken: clinic.accessToken,
+        phoneNumberId: clinic.phoneNumberId,
+        to: from,
+        message: text,
+      });
+    }
+  });
+}
 
     await handleIncomingMessage({
       clinic,
