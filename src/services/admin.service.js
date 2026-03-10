@@ -33,6 +33,8 @@ const getAppointments = async ({
   to,
   status,
   timeZone,
+  page,
+  pageSize,
 }) => {
   const where = {
     clinicId,
@@ -66,17 +68,66 @@ const getAppointments = async ({
     }
   }
 
-  const appointments = await prisma.appointment.findMany({
-    where,
-    include: {
-      service: true,
-    },
-    orderBy: {
-      startAt: "asc",
-    },
-  });
+  // ✅ Paginación segura (compatible hacia atrás)
+  const currentPage =
+    page && Number(page) > 0 ? Number(page) : null;
 
-  return appointments;
+  const take =
+    pageSize && Number(pageSize) > 0
+      ? Number(pageSize)
+      : 20;
+
+  const [appointments, total] = await Promise.all([
+    prisma.appointment.findMany({
+      where,
+      include: {
+        service: true,
+      },
+      orderBy: {
+        startAt: "asc",
+      },
+      skip: currentPage
+        ? (currentPage - 1) * take
+        : undefined,
+      take: currentPage ? take : undefined,
+    }),
+    prisma.appointment.count({ where }),
+  ]);
+
+  // ✅ Métricas de asistencia
+  const [attendedCount, noShowCount] = await Promise.all([
+    prisma.appointment.count({
+      where: {
+        ...where,
+        status: "attended",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        ...where,
+        status: "no_show",
+      },
+    }),
+  ]);
+
+  const totalFinalized = attendedCount + noShowCount;
+
+  const noShowRate =
+    totalFinalized > 0
+      ? Number(((noShowCount / totalFinalized) * 100).toFixed(2))
+      : 0;
+
+  return {
+    data: appointments,
+    total,
+    page: currentPage,
+    pageSize: currentPage ? take : null,
+    metrics: {
+      attended: attendedCount,
+      noShow: noShowCount,
+      noShowRate,
+    },
+  };
 };
 
 const updateAppointmentStatus = async ({
@@ -109,9 +160,7 @@ const updateAppointmentStatus = async ({
 
   const now = new Date();
 
-  // ✅ Reglas de negocio
-
-  // No permitir marcar asistencia si la cita es futura
+  // ✅ No permitir marcar asistencia si la cita es futura
   if (
     (status === "attended" || status === "no_show") &&
     appointment.startAt > now
@@ -121,7 +170,7 @@ const updateAppointmentStatus = async ({
     );
   }
 
-  // No permitir cambiar estado si ya está finalizado
+  // ✅ No permitir cambiar estado si ya está finalizado
   if (
     appointment.status === "attended" ||
     appointment.status === "no_show"

@@ -3,7 +3,6 @@ const { generateToken } = require("../lib/jwt");
 const { getAppointments } = require("../services/admin.service");
 const { updateAppointmentStatus } = require("../services/admin.service");
 
-
 const healthCheck = async (req, res) => {
   return res.json({
     success: true,
@@ -45,20 +44,25 @@ const login = async (req, res) => {
 
 const listAppointments = async (req, res) => {
   try {
-    const { from, to, status } = req.query;
+    const { from, to, status, page, pageSize } = req.query;
 
-    const appointments = await getAppointments({
+    const result = await getAppointments({
       clinicId: req.clinic.id,
       from,
       to,
       status,
       timeZone: req.clinic.timeZone,
+      page,
+      pageSize,
     });
 
     return res.json({
       success: true,
-      count: appointments.length,
-      data: appointments,
+      count: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      metrics: result.metrics,
+      data: result.data,
     });
   } catch (error) {
     return res.status(500).json({
