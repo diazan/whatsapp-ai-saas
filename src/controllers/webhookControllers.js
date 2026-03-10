@@ -25,6 +25,8 @@ const handleWebhook = async (req, res) => {
 
     const phoneNumberId = value.metadata?.phone_number_id;
 
+    console.log("PHONE NUMBER ID:", phoneNumberId);
+
     if (!phoneNumberId) {
       console.log("No phoneNumberId found");
       return;
