@@ -2,6 +2,7 @@ const { loginClinic } = require("../services/admin.service");
 const { generateToken } = require("../lib/jwt");
 const { getAppointments } = require("../services/admin.service");
 const { updateAppointmentStatus } = require("../services/admin.service");
+const logger = require('../utils/logger');
 
 const healthCheck = async (req, res) => {
   return res.json({
@@ -25,6 +26,12 @@ const login = async (req, res) => {
       clinicId: clinic.id,
     });
 
+    logger.info({
+  type: 'admin_login_success',
+  clinicId: clinic.id,
+  email: clinic.email
+});
+
     return res.json({
       success: true,
       token,
@@ -34,12 +41,18 @@ const login = async (req, res) => {
         email: clinic.email,
       },
     });
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: error.message,
+    } catch (error) {
+    logger.warn({
+        type: 'admin_login_failed',
+        email: req.body?.email || null,
+        reason: error.message
     });
-  }
+
+    return res.status(401).json({
+        success: false,
+        message: error.message,
+    });
+    }
 };
 
 const listAppointments = async (req, res) => {
@@ -83,16 +96,31 @@ const changeAppointmentStatus = async (req, res) => {
       status,
     });
 
+    logger.info({
+    type: 'appointment_status_changed',
+    clinicId: req.clinic.id,
+    appointmentId: id,
+    newStatus: status
+    });
+
     return res.json({
       success: true,
       data: updated,
     });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  logger.warn({
+    type: 'appointment_status_change_failed',
+    clinicId: req.clinic?.id || null,
+    appointmentId: req.params?.id || null,
+    attemptedStatus: req.body?.status || null,
+    reason: error.message
+  });
+
+  return res.status(400).json({
+    success: false,
+    message: error.message,
+  });
+}
 };
 
 module.exports = {

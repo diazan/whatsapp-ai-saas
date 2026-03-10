@@ -2,17 +2,24 @@ console.log("🚀 SERVER STARTED");
 require("dotenv").config();
 
 
+
+
 const express = require("express");
 const { startReminderJob } = require("./services/reminder.service");
 const cors = require("cors"); // ✅ agregar
 const testRoutes = require("./routes/test.routes");
+const logger = require('./utils/logger');
 const webhookRoutes = require("./routes/webhook");
+const requestLogger = require('./middleware/requestLogger');
 const adminRoutes = require("./routes/admin.routes");
 const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
 ];
+app.use(express.json());
+app.use(requestLogger);
+logger.info('✅ Logger inicializado correctamente');
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -33,8 +40,7 @@ app.use((req, res, next) => {
 });
 
 
-app.use(express.json());
-
+app.use(requestLogger);
 // ✅ Montar rutas
 app.use("/api", testRoutes);
 app.use("/webhook", webhookRoutes);
@@ -43,7 +49,7 @@ app.use("/admin", adminRoutes);
 app.get("/", (req, res) => {
   res.send("SERVER MINIMO FUNCIONANDO");
 });
-
+app.use("/admin", require("./routes/admin.routes"));
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
