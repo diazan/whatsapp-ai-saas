@@ -11,6 +11,7 @@ const processedMessages = new Set();
 
 const handleWebhook = async (req, res) => {
   console.log("🔥 WEBHOOK HIT");
+  console.log("BODY COMPLETO:", JSON.stringify(req.body, null, 2));
 
   // ✅ 1. RESPONDER INMEDIATAMENTE A META
   res.sendStatus(200);
