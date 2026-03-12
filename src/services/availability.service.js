@@ -20,9 +20,7 @@ const validateClinicSchedule = async (clinicId, startAt, endAt) => {
 
   const start = DateTime.fromJSDate(startAt).setZone(clinic.timeZone);
 
-  console.log("DEBUG HORARIO:", {
-    startISO: start.toISO(),
-  });
+  
   const end   = DateTime.fromJSDate(endAt).setZone(clinic.timeZone);
 
   // ✅ CORRECTO: aplicar timezone antes de calcular weekday

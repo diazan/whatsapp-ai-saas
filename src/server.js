@@ -17,10 +17,10 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://whatsapp-admin-dashboard-ecru.vercel.app"
-    ],
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-    credentials: true
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://whatsapp-admin-dashboard-xxxx.vercel.app"
+    ]
   })
 );
 const allowedOrigins = [
@@ -62,7 +62,7 @@ app.get("/", (req, res) => {
   res.send("SERVER MINIMO FUNCIONANDO");
 });
 app.use("/admin", require("./routes/admin.routes"));
-const PORT = process.env.PORT || 3000;
+const PORT = 4000;
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);

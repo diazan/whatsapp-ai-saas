@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { sendManualMessage } = require("../controllers/manualMessage.controller");
 
 const {
   healthCheck,
@@ -25,6 +26,12 @@ router.patch(
   "/appointments/:id/status",
   authenticateAdmin,
   changeAppointmentStatus
+);
+
+router.post(
+  "/send-manual-message",
+  authenticateAdmin,
+  sendManualMessage
 );
 
 module.exports = router;
