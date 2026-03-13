@@ -204,7 +204,7 @@ const handleSalesBotMessage = async ({
           "✅ Agendamiento automático por WhatsApp\n" +
           "✅ Confirmaciones y recordatorios automáticos\n" +
           "✅ Cancelación y reprogramación sin intervención humana\n" +
-          "✅ Panel con métricas reales de ocupación\n\n" +
+          "✅ Panel con métricas reales de ocupación\n" +
           "✅ Además, te brinda mayor control y organización sobre tu agenda.\n\n" +
           "Escribe 1 cuando quieras agendar tu demo.\n\n" +
           "0️⃣ Volver atrás"
