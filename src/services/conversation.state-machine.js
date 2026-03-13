@@ -9,6 +9,8 @@ const {
 
 const BOOKING_KEYWORDS = ["cita", "turno", "agendar", "reservar"];
 
+const { handleSalesBot } = require("./salesBot.service");
+
 const handleIncomingMessage = async ({
   clinic,
   message,
@@ -16,6 +18,17 @@ const handleIncomingMessage = async ({
   patientName,
   sendMessage
 }) => {
+
+    // ✅ Separación por tipo de clínica
+  if (clinic.type === "SALES") {
+    return handleSalesBot({
+      clinic,
+      message,
+      patientPhone,
+      patientName,
+      sendMessage
+    });
+  }
 
   const conversation = await getOrCreateConversation({
     

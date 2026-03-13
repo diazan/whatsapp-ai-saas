@@ -47,8 +47,7 @@ const sendWhatsAppMessage = async ({
       }
     );
 
-    console.log("✅ WhatsApp message sent:", response.data);
-
+    
     return {
       success: true,
       data: response.data,
@@ -69,6 +68,7 @@ const sendWhatsAppMessage = async ({
     };
   }
 };
+
 
 module.exports = {
   sendWhatsAppMessage,

@@ -8,101 +8,79 @@ datasource db {
 }
 
 model Clinic {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   name          String
-  phoneNumberId String   @unique
+  phoneNumberId String           @unique
   accessToken   String
-  status        String   @default("active")
-  createdAt     DateTime @default(now())
-
-  timeZone String @default("America/Mexico_City")
-
-  email        String?  @unique
-  passwordHash String?
-
-  services      Service[]
+  status        String           @default("active")
+  createdAt     DateTime         @default(now())
+  timeZone      String           @default("America/Mexico_City")
+  email         String?          @unique
+  passwordHash  String?
   appointments  Appointment[]
-  conversations Conversation[]
   schedules     ClinicSchedule[]
+  conversations Conversation[]
+  services      Service[]
 }
 
 model Service {
-  id String @id @default(uuid())
-
-  clinicId String
-  clinic   Clinic @relation(fields: [clinicId], references: [id])
-
-  name        String
-  durationMin Int
-  active      Boolean @default(true)
-  displayOrder Int @default(0)
-
-  createdAt DateTime @default(now())
-
+  id           String        @id @default(uuid())
+  clinicId     String
+  name         String
+  durationMin  Int
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  displayOrder Int           @default(0)
   appointments Appointment[]
+  clinic       Clinic        @relation(fields: [clinicId], references: [id])
 
   @@index([clinicId])
 }
 
 model Appointment {
-  id String @id @default(uuid())
-
-  clinicId String
-  clinic   Clinic @relation(fields: [clinicId], references: [id])
-
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id])
-
+  id           String   @id @default(uuid())
+  clinicId     String
+  serviceId    String
   patientName  String
   patientPhone String
-
-  startAt DateTime
-  endAt   DateTime
-
-  status       String  @default("scheduled")
-  reminderSent Boolean @default(false)
-
-  createdAt DateTime @default(now())
+  startAt      DateTime
+  endAt        DateTime
+  status       String   @default("scheduled")
+  reminderSent Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  clinic       Clinic   @relation(fields: [clinicId], references: [id])
+  service      Service  @relation(fields: [serviceId], references: [id])
 
   @@index([clinicId, startAt])
   @@index([clinicId, patientPhone])
 }
 
 model Conversation {
-  id String @id @default(uuid())
-
-  clinicId String
-  clinic   Clinic @relation(fields: [clinicId], references: [id])
-
-  patientPhone String
-  patientName  String?
-
-  state   String
-  context Json?
-
-  active Boolean @default(true)
-
+  id            String   @id @default(uuid())
+  clinicId      String
+  patientPhone  String
+  patientName   String?
+  state         String
+  context       Json?
+  active        Boolean  @default(true)
   lastMessageAt DateTime @default(now())
   expiresAt     DateTime
-
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  clinic        Clinic   @relation(fields: [clinicId], references: [id])
 
   @@index([clinicId, patientPhone])
   @@index([clinicId, active])
 }
 
 model ClinicSchedule {
-  id       String @id @default(uuid())
-  clinicId String
-  clinic   Clinic @relation(fields: [clinicId], references: [id])
-
-  dayOfWeek Int // 0=Sunday, 1=Monday... 6=Saturday
-  openTime  String // "09:00"
-  closeTime String // "18:00"
-
-  isActive Boolean @default(true)
-
+  id        String   @id @default(uuid())
+  clinicId  String
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  clinic    Clinic   @relation(fields: [clinicId], references: [id])
 
   @@unique([clinicId, dayOfWeek])
   @@index([clinicId])
