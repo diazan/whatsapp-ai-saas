@@ -114,7 +114,7 @@ const handleSalesBotMessage = async ({
       "👋 Hola, gracias por comunicarte con *Kerbo*.\n\n" +
       "¿Cómo estás?\n\n" +
       "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
-      "Con Kerbo puedes reducir eso automáticamente y tener mayor control sobre tu agenda.\n\n" +
+      "Con Kerbo-Flow puedes reducir eso automáticamente y tener mayor control sobre tu agenda.\n\n" +
       "¿Quieres ver cómo funciona?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
