@@ -14,19 +14,25 @@ const requestLogger = require('./middleware/requestLogger');
 const adminRoutes = require("./routes/admin.routes");
 const app = express();
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "https://whatsapp-admin-dashboard-xxxx.vercel.app"
-    ]
-  })
-);
+
 const allowedOrigins = [
   "http://localhost:3000",
-  "http://localhost:3001",
+  "https://www.kerbo.co",
+  "https://kerbo.co",
+  "https://whatsapp-admin-dashboard-git-main-diazans-projects.vercel.app"
 ];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow non-browser requests
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(requestLogger);
 
