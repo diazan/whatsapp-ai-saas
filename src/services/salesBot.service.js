@@ -82,11 +82,14 @@ function parseTime(text) {
 }
 
 const handleSalesBotMessage = async ({
+  
   clinic,
   message,
   patientPhone,
   sendMessage
 }) => {
+
+  console.log("🔎 SALES BOT clinicId:", clinic.id);
 
   const text = message.toLowerCase().trim();
 
