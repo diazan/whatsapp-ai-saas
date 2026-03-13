@@ -24,6 +24,8 @@ const handleWebhook = async (req, res) => {
     }
 
     const phoneNumberId = value.metadata?.phone_number_id;
+    console.log("📌 Incoming phoneNumberId:", phoneNumberId);
+    console.log("📌 DEMO_PHONE_NUMBER_ID env:", process.env.DEMO_PHONE_NUMBER_ID);
 
    
     if (!phoneNumberId) {
