@@ -84,7 +84,7 @@ const getAppointments = async ({
         service: true,
       },
       orderBy: {
-        startAt: "asc",
+        startAt: "desc",
       },
       skip: currentPage
         ? (currentPage - 1) * take
