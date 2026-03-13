@@ -45,10 +45,8 @@ async function getDemoServiceId(clinicId) {
 }
 
 function parseTime(text) {
-
   const cleaned = text.toLowerCase().replace(/\s/g, "");
 
-  // ✅ Formato HH:mm (24h)
   const regex24 = /^(\d{1,2}):([0-5]\d)$/;
   const match24 = cleaned.match(regex24);
 
@@ -61,7 +59,6 @@ function parseTime(text) {
     }
   }
 
-  // ✅ Formato 2pm / 2:30pm / 10am
   const regexAmPm = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/;
   const matchAmPm = cleaned.match(regexAmPm);
 
@@ -82,14 +79,11 @@ function parseTime(text) {
 }
 
 const handleSalesBotMessage = async ({
-  
   clinic,
   message,
   patientPhone,
   sendMessage
 }) => {
-
-  console.log("🔎 SALES BOT clinicId:", clinic.id);
 
   const text = message.toLowerCase().trim();
 
@@ -98,23 +92,6 @@ const handleSalesBotMessage = async ({
     patientPhone,
     patientName: null
   });
-
-  // ✅ Escape global al inicio
-if (text === "0") {
-
-  await updateConversation(conversation.id, {
-    state: SALES_STATES.PROBLEM_HOOK,
-    context: {}
-  });
-
-  return sendMessage(
-    "👋 Volvemos al inicio.\n\n" +
-    "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones.\n\n" +
-    "¿Quieres ver cómo funciona?\n\n" +
-    "1️⃣ Sí, muéstrame\n\n" 
-
-  );
-}
 
   if (conversation.expired) {
     await updateConversation(conversation.id, {
@@ -137,7 +114,7 @@ if (text === "0") {
       "👋 Hola, gracias por comunicarte con *Kerbo*.\n\n" +
       "¿Cómo estás?\n\n" +
       "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
-      "Con Kerbo-Flow puedes reducir eso automáticamente y tener mayor control sobre tu agenda.\n\n" +
+      "Con Kerbo puedes reducir eso automáticamente y tener mayor control sobre tu agenda.\n\n" +
       "¿Quieres ver cómo funciona?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
@@ -196,20 +173,18 @@ if (text === "0") {
 
     case SALES_STATES.SHOW_RESULT:
 
-      // ✅ Volver atrás (desde este menú)
       if (text === "0") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.SHOW_RESULT
-        });
-
         return sendMessage(
+          `Con aproximadamente ${conversation.context.estimatedVolume} citas al mes,\n\n` +
+          `📉 Podrías estar perdiendo alrededor de ${Math.floor(conversation.context.estimatedVolume * ESTIMATED_NO_SHOW_RATE)} citas.\n\n` +
+          `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${conversation.context.estimatedRecovery} citas mensuales.\n\n` +
           "¿Te gustaría agendar una demo personalizada?\n\n" +
           "1️⃣ Sí, agendar demo\n" +
-          "2️⃣ Más información"
+          "2️⃣ Más información\n\n" +
+          "0️⃣ Volver atrás"
         );
       }
 
-      // ✅ Agendar demo
       if (text === "1") {
         await updateConversation(conversation.id, {
           state: SALES_STATES.BOOKING_DATE
@@ -223,7 +198,6 @@ if (text === "0") {
         );
       }
 
-      // ✅ Ver más información
       if (text === "2") {
         return sendMessage(
           "Nuestro sistema incluye:\n\n" +
@@ -231,8 +205,7 @@ if (text === "0") {
           "✅ Confirmaciones y recordatorios automáticos\n" +
           "✅ Cancelación y reprogramación sin intervención humana\n" +
           "✅ Panel con métricas reales de ocupación\n\n" +
-          "Además, te brinda mayor control y organización sobre tu agenda,\n" +
-          "reduciendo el estrés operativo y mejorando la experiencia del paciente.\n\n" +
+          "Además, te brinda mayor control y organización sobre tu agenda.\n\n" +
           "Escribe 1 cuando quieras agendar tu demo.\n\n" +
           "0️⃣ Volver atrás"
         );
@@ -240,9 +213,20 @@ if (text === "0") {
 
       return sendMessage("Elige una opción válida.");
 
-    return sendMessage("Elige una opción válida.");
-
     case SALES_STATES.BOOKING_DATE: {
+
+      if (text === "0") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.SHOW_RESULT
+        });
+
+        return sendMessage(
+          "¿Te gustaría agendar una demo personalizada?\n\n" +
+          "1️⃣ Sí, agendar demo\n" +
+          "2️⃣ Más información\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
 
       const date = parseDate(text);
 
@@ -251,7 +235,6 @@ if (text === "0") {
       }
 
       const dateISO = date.toISOString().split("T")[0];
-
       const serviceId = await getDemoServiceId(clinic.id);
 
       if (!serviceId) {
@@ -264,39 +247,15 @@ if (text === "0") {
         dateISO
       });
 
-      const nowInClinic = DateTime.now().setZone(clinic.timeZone);
-      const selectedDate = DateTime.fromISO(dateISO, { zone: clinic.timeZone });
-
-      // ✅ Si es hoy, permitir hora manual directamente
-      if (selectedDate.hasSame(nowInClinic, "day")) {
-
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.BOOKING_TIME,
-          context: {
-            dateISO,
-            serviceId,
-            availableSlots: slots || []
-          }
-        });
-
-        return sendMessage(
-          "Para hoy, escribe la hora deseada en formato HH:mm.\nEjemplo: 16:00"
-        );
-      }
-
       if (!slots.length) {
         return sendMessage(
-          "No hay horarios disponibles para esa fecha.\nElige otra."
+          "No hay horarios disponibles para esa fecha.\nElige otra.\n\n0️⃣ Volver atrás"
         );
       }
 
       await updateConversation(conversation.id, {
         state: SALES_STATES.BOOKING_TIME,
-        context: {
-          dateISO,
-          serviceId,
-          availableSlots: slots
-        }
+        context: { dateISO, serviceId, availableSlots: slots }
       });
 
       let response = "Estos horarios están disponibles:\n\n";
@@ -305,27 +264,33 @@ if (text === "0") {
         response += `${index + 1}️⃣ ${slot}\n`;
       });
 
-      response += "\nResponde con el número o escribe la hora en formato HH:mm.\n\n0️⃣ Volver al inicio";
+      response += "\nResponde con el número o escribe la hora en formato HH:mm.\n\n0️⃣ Volver atrás";
 
       return sendMessage(response);
     }
 
     case SALES_STATES.BOOKING_TIME: {
 
+      if (text === "0") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_DATE
+        });
+
+        return sendMessage(
+          "¿Para qué fecha deseas la demo?\nFormato: DD/MM/AAAA\n\n0️⃣ Volver atrás"
+        );
+      }
+
       let selected = null;
 
-      // ✅ Número
       if (/^\d+$/.test(text)) {
         const index = parseInt(text, 10);
         selected = conversation.context.availableSlots?.[index - 1];
       }
 
-      // ✅ Hora manual
       if (!selected) {
         const manualTime = parseTime(text);
-        if (manualTime) {
-          selected = manualTime;
-        }
+        if (manualTime) selected = manualTime;
       }
 
       if (!selected) {
@@ -338,24 +303,31 @@ if (text === "0") {
 
       await updateConversation(conversation.id, {
         state: SALES_STATES.ASK_NAME,
-        context: {
-          ...conversation.context,
-          startAtISO
-        }
+        context: { ...conversation.context, startAtISO }
       });
 
       return sendMessage(
         "Perfecto ✅\n\n" +
         "Antes de confirmar la demo,\n" +
-        "¿Con qué nombre agendamos tu cita?" +
-        "\n\n0️⃣ Volver al inicio"
+        "¿Con qué nombre agendamos?\n\n" +
+        "0️⃣ Volver atrás"
       );
     }
 
     case SALES_STATES.ASK_NAME: {
 
+      if (text === "0") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_TIME
+        });
+
+        return sendMessage(
+          "Responde con el número del horario o escribe la hora en formato HH:mm.\n\n0️⃣ Volver atrás"
+        );
+      }
+
       if (!text || text.length < 2) {
-        return sendMessage("Por favor escribe tu nombre");
+        return sendMessage("Por favor indícame tu nombre 😊");
       }
 
       try {
@@ -379,8 +351,8 @@ if (text === "0") {
           "✅ *Demo confirmada*\n\n" +
           `📅 Fecha: ${date.toFormat("dd/MM/yyyy")}\n` +
           `⏰ Hora: ${date.toFormat("hh:mm a")}\n\n` +
-          "📩 Recibirás el enlace de Google Meet aproximadamente 15 minutos antes de la reunión.\n\n" +
-          "También te enviaremos un recordatorio automático.\n\n" +
+          "📩 Recibirás un recordatorio automático 24 horas antes.\n\n" +
+          "El enlace de Google Meet te lo enviaremos antes de comenzar la reunión.\n\n" +
           "Nos vemos pronto 👋"
         );
 
