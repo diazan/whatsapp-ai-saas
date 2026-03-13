@@ -162,7 +162,7 @@ const handleSalesBotMessage = async ({
         `Con aproximadamente ${volume} citas al mes,\n\n` +
         `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
         `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
-        `Además, te brinda mayor control y organización sobre tu agenda,\n` +
+        `🗂️ Además, te brinda mayor control y organización sobre tu agenda,\n` +
         `permitiéndote visualizar mejor tus citas y reducir el caos operativo.\n\n` +
         "¿Te gustaría agendar una demo personalizada?\n\n" +
         "1️⃣ Sí, agendar demo\n" +
@@ -205,7 +205,7 @@ const handleSalesBotMessage = async ({
           "✅ Confirmaciones y recordatorios automáticos\n" +
           "✅ Cancelación y reprogramación sin intervención humana\n" +
           "✅ Panel con métricas reales de ocupación\n\n" +
-          "Además, te brinda mayor control y organización sobre tu agenda.\n\n" +
+          "✅ Además, te brinda mayor control y organización sobre tu agenda.\n\n" +
           "Escribe 1 cuando quieras agendar tu demo.\n\n" +
           "0️⃣ Volver atrás"
         );
