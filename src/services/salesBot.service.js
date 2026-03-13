@@ -134,9 +134,10 @@ if (text === "0") {
     });
 
     return sendMessage(
-      "👋 Hola.\n\n" +
+      "👋 Hola, gracias por comunicarte con *Kerbo*.\n\n" +
+      "¿Cómo estás?\n\n" +
       "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
-      "Yo ayudo a reducir eso automáticamente.\n\n" +
+      "Con Kerbo-Flow puedes reducir eso automáticamente y tener mayor control sobre tu agenda.\n\n" +
       "¿Quieres ver cómo funciona?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
@@ -184,39 +185,60 @@ if (text === "0") {
         `Con aproximadamente ${volume} citas al mes,\n\n` +
         `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
         `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
+        `Además, te brinda mayor control y organización sobre tu agenda,\n` +
+        `permitiéndote visualizar mejor tus citas y reducir el caos operativo.\n\n` +
         "¿Te gustaría agendar una demo personalizada?\n\n" +
         "1️⃣ Sí, agendar demo\n" +
         "2️⃣ Más información\n\n" +
-        "0️⃣ Volver al inicio"
+        "0️⃣ Volver atrás"
       );
     }
 
     case SALES_STATES.SHOW_RESULT:
 
-    if (text === "1") {
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.BOOKING_DATE
-      });
+      // ✅ Volver atrás (desde este menú)
+      if (text === "0") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.SHOW_RESULT
+        });
 
-      return sendMessage(
-        "Perfecto ✅\n\n" +
-        "¿Para qué fecha deseas la demo?\n" +
-        "Formato: DD/MM/AAAA" +
-        "\n\n0️⃣ Volver al inicio"
-      );
-    }
+        return sendMessage(
+          "¿Te gustaría agendar una demo personalizada?\n\n" +
+          "1️⃣ Sí, agendar demo\n" +
+          "2️⃣ Más información"
+        );
+      }
 
-    if (text === "2") {
-      return sendMessage(
-        "Nuestro sistema incluye:\n\n" +
-        "✅ Agendamiento automático por WhatsApp\n" +
-        "✅ Confirmaciones y recordatorios automáticos\n" +
-        "✅ Cancelación y reprogramación sin intervención humana\n" +
-        "✅ Panel con métricas reales de ocupación\n\n" +
-        "Escribe 1 cuando quieras agendar tu demo." +
-        "\n\n0️⃣ Volver al inicio"
-      );
-    }
+      // ✅ Agendar demo
+      if (text === "1") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_DATE
+        });
+
+        return sendMessage(
+          "Perfecto ✅\n\n" +
+          "¿Para qué fecha deseas la demo?\n" +
+          "Formato: DD/MM/AAAA\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
+
+      // ✅ Ver más información
+      if (text === "2") {
+        return sendMessage(
+          "Nuestro sistema incluye:\n\n" +
+          "✅ Agendamiento automático por WhatsApp\n" +
+          "✅ Confirmaciones y recordatorios automáticos\n" +
+          "✅ Cancelación y reprogramación sin intervención humana\n" +
+          "✅ Panel con métricas reales de ocupación\n\n" +
+          "Además, te brinda mayor control y organización sobre tu agenda,\n" +
+          "reduciendo el estrés operativo y mejorando la experiencia del paciente.\n\n" +
+          "Escribe 1 cuando quieras agendar tu demo.\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
+
+      return sendMessage("Elige una opción válida.");
 
     return sendMessage("Elige una opción válida.");
 
