@@ -347,7 +347,7 @@ if (text === "0") {
       return sendMessage(
         "Perfecto ✅\n\n" +
         "Antes de confirmar la demo,\n" +
-        "¿Me indicas tu nombre completo?" +
+        "¿Con qué nombre agendamos tu cita?" +
         "\n\n0️⃣ Volver al inicio"
       );
     }
@@ -355,7 +355,7 @@ if (text === "0") {
     case SALES_STATES.ASK_NAME: {
 
       if (!text || text.length < 2) {
-        return sendMessage("Por favor escribe tu nombre completo.");
+        return sendMessage("Por favor escribe tu nombre");
       }
 
       try {
@@ -376,10 +376,11 @@ if (text === "0") {
         );
 
         return sendMessage(
-          "✅ Demo confirmada\n\n" +
+          "✅ *Demo confirmada*\n\n" +
           `📅 Fecha: ${date.toFormat("dd/MM/yyyy")}\n` +
           `⏰ Hora: ${date.toFormat("hh:mm a")}\n\n` +
-          "Recibirás un recordatorio automático.\n\n" +
+          "📩 Recibirás el enlace de Google Meet aproximadamente 15 minutos antes de la reunión.\n\n" +
+          "También te enviaremos un recordatorio automático.\n\n" +
           "Nos vemos pronto 👋"
         );
 
