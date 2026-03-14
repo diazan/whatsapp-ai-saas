@@ -240,126 +240,81 @@ const handleSalesBotMessage = async ({
 
     case SALES_STATES.BOOKING_DATE: {
 
-    if (text === "0") {
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.SHOW_RESULT
-      });
-
-      return sendMessage(
-        "¿Te gustaría agendar una demo personalizada?\n\n" +
-        "1️⃣ Sí, agendar demo\n" +
-        "2️⃣ Más información\n" +
-        "3️⃣ Probar cómo funciona el agendamiento\n\n" +
-        "0️⃣ Volver atrás"
-      );
-    }
-
-    const date = parseDate(text);
-
-    if (!date) {
-      return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
-    }
-
-    // ✅ Validación segura por día (sin problemas de zona horaria)
-    const selectedDateISO = DateTime.fromJSDate(date, {
-      zone: clinic.timeZone
-    }).toFormat("yyyy-MM-dd");
-
-    const todayISO = DateTime.now()
-      .setZone(clinic.timeZone)
-      .toFormat("yyyy-MM-dd");
-
-    if (selectedDateISO < todayISO) {
-      return sendMessage(
-        "No puedes agendar una fecha pasada.\n\n" +
-        "Por favor elige una fecha futura o el día de hoy.\n\n" +
-        "0️⃣ Volver atrás"
-      );
-    }
-
-    const serviceId = await getDemoServiceId(clinic.id);
-
-    if (!serviceId) {
-      return sendMessage("Servicio demo no configurado.");
-    }
-
-    let slots = await getAvailableSlotsForDay({
-      clinicId: clinic.id,
-      serviceId,
-      dateISO: selectedDateISO
-    });
-
-    if (!slots.length) {
-      return sendMessage(
-        "No hay horarios disponibles para esa fecha.\n" +
-        "Elige otra.\n\n0️⃣ Volver atrás"
-      );
-    }
-
-    await updateConversation(conversation.id, {
-      state: SALES_STATES.BOOKING_TIME,
-      context: {
-        dateISO: selectedDateISO,
-        serviceId,
-        availableSlots: slots
-      }
-    });
-
-    let response = "Estos horarios están disponibles:\n\n";
-
-    slots.forEach((slot, index) => {
-      response += `${index + 1}️⃣ ${slot}\n`;
-    });
-
-    response +=
-      "\nResponde con el número o escribe la hora en formato HH:mm.\n\n0️⃣ Volver atrás";
-
-    return sendMessage(response);
-  }
-
-    case SALES_STATES.BOOKING_TIME: {
-
       if (text === "0") {
         await updateConversation(conversation.id, {
-          state: SALES_STATES.BOOKING_DATE
+          state: SALES_STATES.SHOW_RESULT
         });
 
         return sendMessage(
-          "¿Para qué fecha deseas la demo?\nFormato: DD/MM/AAAA\n\n0️⃣ Volver atrás"
+          "¿Te gustaría agendar una demo personalizada?\n\n" +
+          "1️⃣ Sí, agendar demo\n" +
+          "2️⃣ Más información\n" +
+          "3️⃣ Probar cómo funciona el agendamiento\n\n" +
+          "0️⃣ Volver atrás"
         );
       }
 
-      let selected = null;
-
-      if (/^\d+$/.test(text)) {
-        const index = parseInt(text, 10);
-        selected = conversation.context.availableSlots?.[index - 1];
-      }
-
-      if (!selected) {
-        const manualTime = parseTime(text);
-        if (manualTime) selected = manualTime;
-      }
-
-      if (!selected) {
-        return sendMessage(
-          "Responde con el número del horario o escribe la hora en formato HH:mm."
-        );
-      }
-
-      const startAtISO = `${conversation.context.dateISO}T${selected}:00`;
-
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.ASK_NAME,
-        context: { ...conversation.context, startAtISO }
+      // ✅ Parse seguro usando Luxon directamente
+      const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
+        zone: clinic.timeZone
       });
 
-      return sendMessage(
-        "Perfecto ✅\n\n" +
-        "Antes de confirmar la demo,\n" +
-        "¿Con qué nombre agendamos?\n\n" +
-        "0️⃣ Volver atrás"
-      );
+      if (!dateObj.isValid) {
+        return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
+      }
+
+      const selectedDateISO = dateObj.toFormat("yyyy-MM-dd");
+
+      const todayISO = DateTime.now()
+        .setZone(clinic.timeZone)
+        .toFormat("yyyy-MM-dd");
+
+      if (selectedDateISO < todayISO) {
+        return sendMessage(
+          "No puedes agendar una fecha pasada.\n\n" +
+          "Por favor elige una fecha futura o el día de hoy.\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
+
+      const serviceId = await getDemoServiceId(clinic.id);
+
+      if (!serviceId) {
+        return sendMessage("Servicio demo no configurado.");
+      }
+
+      let slots = await getAvailableSlotsForDay({
+        clinicId: clinic.id,
+        serviceId,
+        dateISO: selectedDateISO
+      });
+
+      if (!slots.length) {
+        return sendMessage(
+          "No hay horarios disponibles para esa fecha.\n" +
+          "Elige otra.\n\n0️⃣ Volver atrás"
+        );
+      }
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.BOOKING_TIME,
+        context: {
+          dateISO: selectedDateISO,
+          serviceId,
+          availableSlots: slots
+        }
+      });
+
+      let response = "Estos horarios están disponibles:\n\n";
+
+      slots.forEach((slot, index) => {
+        response += `${index + 1}️⃣ ${slot}\n`;
+      });
+
+      response +=
+        "\nResponde con el número o escribe la hora en formato HH:mm o 2:30pm.\n\n0️⃣ Volver atrás";
+
+      return sendMessage(response);
     }
 
     case SALES_STATES.ASK_NAME: {
