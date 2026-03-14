@@ -259,6 +259,18 @@ const handleSalesBotMessage = async ({
         return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
       }
 
+            // ✅ Validar que no sea fecha pasada
+      const selectedDate = DateTime.fromJSDate(date).setZone(clinic.timeZone).startOf("day");
+      const today = DateTime.now().setZone(clinic.timeZone).startOf("day");
+
+      if (selectedDate < today) {
+        return sendMessage(
+          "No puedes agendar una fecha pasada.\n\n" +
+          "Por favor elige una fecha futura.\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
+
       const dateISO = date.toISOString().split("T")[0];
       const serviceId = await getDemoServiceId(clinic.id);
 
