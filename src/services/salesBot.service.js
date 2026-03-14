@@ -4,12 +4,12 @@ const {
   closeConversation
 } = require("./conversation.service");
 
-const { parseDate } = require("../utils/date.utils");
 const { getAvailableSlotsForDay } = require("./availability.service");
 const { createAppointment } = require("./bookingService");
 
 const prisma = require("../lib/prisma");
 const { DateTime } = require("luxon");
+
 const {
   handleDemoMessage,
   isUserInDemo
@@ -22,6 +22,7 @@ const SALES_STATES = {
   SHOW_RESULT: "SALES_SHOW_RESULT",
   BOOKING_DATE: "SALES_BOOKING_DATE",
   BOOKING_TIME: "SALES_BOOKING_TIME",
+  CUSTOM_TIME: "SALES_CUSTOM_TIME",
   ASK_NAME: "SALES_ASK_NAME",
   COMPLETED: "SALES_COMPLETED"
 };
@@ -51,16 +52,13 @@ async function getDemoServiceId(clinicId) {
 function parseTime(text) {
   const cleaned = text.toLowerCase().replace(/\s/g, "");
 
-  const regex24 = /^(\d{1,2}):([0-5]\d)$/;
+  const regex24 = /^([0-1]?\d|2[0-3]):([0-5]\d)$/;
   const match24 = cleaned.match(regex24);
 
   if (match24) {
-    let hour = parseInt(match24[1], 10);
+    const hour = match24[1].padStart(2, "0");
     const minute = match24[2];
-
-    if (hour >= 0 && hour <= 23) {
-      return `${hour.toString().padStart(2, "0")}:${minute}`;
-    }
+    return `${hour}:${minute}`;
   }
 
   const regexAmPm = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/;
@@ -91,8 +89,6 @@ const handleSalesBotMessage = async ({
 
   const text = message.toLowerCase().trim();
 
-    // ✅ Si el usuario está dentro de la demo interactiva,
-  // delegamos completamente al módulo demo (sin tocar DB)
   if (isUserInDemo(clinic.id, patientPhone)) {
     return handleDemoMessage({
       clinic,
@@ -127,9 +123,7 @@ const handleSalesBotMessage = async ({
 
     return sendMessage(
       "👋 Hola, gracias por comunicarte con *Kerbo*.\n\n" +
-      "¿Cómo estás?\n\n" +
       "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
-      "Con Kerbo-Flow puedes reducir eso automáticamente y tener mayor control sobre tu agenda.\n\n" +
       "¿Quieres ver cómo funciona?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
@@ -158,9 +152,7 @@ const handleSalesBotMessage = async ({
 
       const volume = getVolumeFromOption(text);
 
-      if (!volume) {
-        return sendMessage("Por favor elige una opción válida.");
-      }
+      if (!volume) return sendMessage("Por favor elige una opción válida.");
 
       const lost = Math.floor(volume * ESTIMATED_NO_SHOW_RATE);
       const recoverable = Math.floor(lost * RECOVERY_RATE);
@@ -174,11 +166,7 @@ const handleSalesBotMessage = async ({
       });
 
       return sendMessage(
-        `Con aproximadamente ${volume} citas al mes,\n\n` +
-        `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
-        `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
-        `🗂️ Además, te brinda mayor control y organización sobre tu agenda,\n` +
-        `permitiéndote visualizar mejor tus citas y reducir el caos operativo.\n\n` +
+        `Con aproximadamente ${volume} citas al mes podrías recuperar alrededor de ${recoverable} citas.\n\n` +
         "¿Te gustaría agendar una demo personalizada?\n\n" +
         "1️⃣ Sí, agendar demo\n" +
         "2️⃣ Más información\n" +
@@ -189,54 +177,32 @@ const handleSalesBotMessage = async ({
 
     case SALES_STATES.SHOW_RESULT:
 
-    if (text === "0") {
-      return sendMessage(
-        `Con aproximadamente ${conversation.context.estimatedVolume} citas al mes,\n\n` +
-        `📉 Podrías estar perdiendo alrededor de ${Math.floor(conversation.context.estimatedVolume * ESTIMATED_NO_SHOW_RATE)} citas.\n\n` +
-        `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${conversation.context.estimatedRecovery} citas mensuales.\n\n` +
-        "¿Te gustaría agendar una demo personalizada?\n\n" +
-        "1️⃣ Sí, agendar demo\n" +
-        "2️⃣ Más información\n" +
-        "3️⃣ Probar cómo funciona el agendamiento\n\n" +
-        "0️⃣ Volver atrás"
-      );
-    }
+      if (text === "1") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_DATE
+        });
 
-    if (text === "1") {
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.BOOKING_DATE
-      });
+        return sendMessage(
+          "¿Para qué fecha deseas la demo?\nFormato: DD/MM/AAAA\n\n0️⃣ Volver atrás"
+        );
+      }
 
-      return sendMessage(
-        "Perfecto ✅\n\n" +
-        "¿Para qué fecha deseas la demo?\n" +
-        "Formato: DD/MM/AAAA\n\n" +
-        "0️⃣ Volver atrás"
-      );
-    }
+      if (text === "2") {
+        return sendMessage(
+          "Kerbo automatiza agendamiento, confirmaciones y recordatorios.\n\nEscribe 1 para agendar.\n\n0️⃣ Volver atrás"
+        );
+      }
 
-    if (text === "2") {
-      return sendMessage(
-        "Nuestro sistema incluye:\n\n" +
-        "✅ Agendamiento automático por WhatsApp\n" +
-        "✅ Confirmaciones y recordatorios automáticos\n" +
-        "✅ Cancelación y reprogramación sin intervención humana\n" +
-        "✅ Panel con métricas reales de ocupación\n\n" +
-        "Escribe 1 cuando quieras agendar tu demo.\n\n" +
-        "0️⃣ Volver atrás"
-      );
-    }
+      if (text === "3") {
+        return handleDemoMessage({
+          clinic,
+          message: "__start__",
+          patientPhone,
+          sendMessage
+        });
+      }
 
-    if (text === "3") {
-      return handleDemoMessage({
-        clinic,
-        message: "__start__",
-        patientPhone,
-        sendMessage
-      });
-    }
-
-    return sendMessage("Elige una opción válida.");
+      return sendMessage("Elige una opción válida.");
 
     case SALES_STATES.BOOKING_DATE: {
 
@@ -246,15 +212,10 @@ const handleSalesBotMessage = async ({
         });
 
         return sendMessage(
-          "¿Te gustaría agendar una demo personalizada?\n\n" +
-          "1️⃣ Sí, agendar demo\n" +
-          "2️⃣ Más información\n" +
-          "3️⃣ Probar cómo funciona el agendamiento\n\n" +
-          "0️⃣ Volver atrás"
+          "1️⃣ Sí, agendar demo\n2️⃣ Más información\n3️⃣ Probar cómo funciona\n\n0️⃣ Volver atrás"
         );
       }
 
-      // ✅ Parse seguro usando Luxon directamente
       const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
         zone: clinic.timeZone
       });
@@ -264,57 +225,117 @@ const handleSalesBotMessage = async ({
       }
 
       const selectedDateISO = dateObj.toFormat("yyyy-MM-dd");
-
-      const todayISO = DateTime.now()
-        .setZone(clinic.timeZone)
-        .toFormat("yyyy-MM-dd");
+      const todayISO = DateTime.now().setZone(clinic.timeZone).toFormat("yyyy-MM-dd");
 
       if (selectedDateISO < todayISO) {
-        return sendMessage(
-          "No puedes agendar una fecha pasada.\n\n" +
-          "Por favor elige una fecha futura o el día de hoy.\n\n" +
-          "0️⃣ Volver atrás"
-        );
+        return sendMessage("No puedes agendar una fecha pasada.");
       }
 
       const serviceId = await getDemoServiceId(clinic.id);
+      if (!serviceId) return sendMessage("Servicio demo no configurado.");
 
-      if (!serviceId) {
-        return sendMessage("Servicio demo no configurado.");
-      }
-
-      let slots = await getAvailableSlotsForDay({
+      const slots = await getAvailableSlotsForDay({
         clinicId: clinic.id,
         serviceId,
         dateISO: selectedDateISO
       });
 
       if (!slots.length) {
-        return sendMessage(
-          "No hay horarios disponibles para esa fecha.\n" +
-          "Elige otra.\n\n0️⃣ Volver atrás"
-        );
+        return sendMessage("No hay horarios disponibles para esa fecha.");
       }
 
       await updateConversation(conversation.id, {
         state: SALES_STATES.BOOKING_TIME,
-        context: {
-          dateISO: selectedDateISO,
-          serviceId,
-          availableSlots: slots
-        }
+        context: { dateISO: selectedDateISO, serviceId, availableSlots: slots }
       });
 
       let response = "Estos horarios están disponibles:\n\n";
-
       slots.forEach((slot, index) => {
         response += `${index + 1}️⃣ ${slot}\n`;
       });
 
-      response +=
-        "\nResponde con el número o escribe la hora en formato HH:mm o 2:30pm.\n\n0️⃣ Volver atrás";
+      response += "4️⃣ Necesito otro horario\n\n0️⃣ Volver atrás";
 
       return sendMessage(response);
+    }
+
+    case SALES_STATES.BOOKING_TIME: {
+
+      if (text === "0") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_DATE
+        });
+
+        return sendMessage("Ingresa la fecha DD/MM/AAAA\n\n0️⃣ Volver atrás");
+      }
+
+      if (text === "4") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.CUSTOM_TIME
+        });
+
+        return sendMessage(
+          "Escribe la hora en la que puedes.\nEj: 3pm, 3:30pm, 15:30\n\n0️⃣ Volver atrás"
+        );
+      }
+
+      let selected = null;
+
+      if (/^\d+$/.test(text)) {
+        const index = parseInt(text, 10);
+        selected = conversation.context.availableSlots?.[index - 1];
+      }
+
+      if (!selected) {
+        const manualTime = parseTime(text);
+        if (manualTime) selected = manualTime;
+      }
+
+      if (!selected || !conversation.context.availableSlots.includes(selected)) {
+        return sendMessage(
+          "Por favor elige uno de los horarios mostrados o escribe 4 para otro horario."
+        );
+      }
+
+      const startAtISO = `${conversation.context.dateISO}T${selected}:00`;
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.ASK_NAME,
+        context: { ...conversation.context, startAtISO }
+      });
+
+      return sendMessage("¿Con qué nombre agendamos?\n\n0️⃣ Volver atrás");
+    }
+
+    case SALES_STATES.CUSTOM_TIME: {
+
+      if (text === "0") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_TIME
+        });
+
+        let response = "Estos horarios están disponibles:\n\n";
+        conversation.context.availableSlots.forEach((slot, index) => {
+          response += `${index + 1}️⃣ ${slot}\n`;
+        });
+
+        response += "4️⃣ Necesito otro horario\n\n0️⃣ Volver atrás";
+        return sendMessage(response);
+      }
+
+      const manualTime = parseTime(text);
+      if (!manualTime) {
+        return sendMessage("Hora inválida. Ej: 3pm, 3:30pm, 15:30");
+      }
+
+      const startAtISO = `${conversation.context.dateISO}T${manualTime}:00`;
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.ASK_NAME,
+        context: { ...conversation.context, startAtISO }
+      });
+
+      return sendMessage("¿Con qué nombre agendamos?\n\n0️⃣ Volver atrás");
     }
 
     case SALES_STATES.ASK_NAME: {
@@ -324,9 +345,7 @@ const handleSalesBotMessage = async ({
           state: SALES_STATES.BOOKING_TIME
         });
 
-        return sendMessage(
-          "Responde con el número del horario o escribe la hora en formato HH:mm.\n\n0️⃣ Volver atrás"
-        );
+        return sendMessage("Elige un horario nuevamente.");
       }
 
       if (!text || text.length < 2) {
@@ -352,19 +371,13 @@ const handleSalesBotMessage = async ({
 
         return sendMessage(
           "✅ *Demo confirmada*\n\n" +
-          `📅 Fecha: ${date.toFormat("dd/MM/yyyy")}\n` +
-          `⏰ Hora: ${date.toFormat("hh:mm a")}\n\n` +
-          "📩 Recibirás un recordatorio automático 24 horas antes.\n\n" +
-          "El enlace de Google Meet te lo enviaremos antes de comenzar la reunión.\n\n" +
+          `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
+          `⏰ ${date.toFormat("hh:mm a")}\n\n` +
           "Nos vemos pronto 👋"
         );
 
       } catch (error) {
-
-        return sendMessage(
-          "Ese horario no está disponible o es inválido.\n" +
-          "Escribe otra hora en formato HH:mm."
-        );
+        return sendMessage("Ese horario no está disponible.");
       }
     }
 
