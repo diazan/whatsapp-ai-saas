@@ -88,9 +88,10 @@ async function handleDemoMessage({
 
       if (text === "2") {
         if (!session.appointment) {
-          return sendMessage(
-            "No tienes ninguna cita agendada en esta demo.\n\n0️⃣ Volver al menú"
-          );
+            return sendMessage(
+            "No tienes ninguna cita agendada en esta demo.\n\n" +
+            getMenuMessage()
+            );
         }
 
         const date = DateTime.fromISO(session.appointment.startAtISO, {
@@ -98,18 +99,19 @@ async function handleDemoMessage({
         });
 
         return sendMessage(
-          "📋 *Tu cita demo*\n\n" +
-          `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
-          `⏰ ${date.toFormat("hh:mm a")}\n\n` +
-          "0️⃣ Volver al menú"
+        "📋 *Tu cita demo*\n\n" +
+        `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
+        `⏰ ${date.toFormat("hh:mm a")}\n\n` +
+        getMenuMessage()
         );
       }
 
       if (text === "3") {
         if (!session.appointment) {
-          return sendMessage(
-            "Primero debes agendar una cita.\n\n0️⃣ Volver al menú"
-          );
+            return sendMessage(
+            "Primero debes agendar una cita.\n\n" +
+            getMenuMessage()
+            );
         }
 
         session.step = "ASK_DATE";
@@ -128,7 +130,8 @@ async function handleDemoMessage({
         session.appointment = null;
 
         return sendMessage(
-          "✅ Tu cita demo ha sido cancelada.\n\n0️⃣ Volver al menú"
+        "✅ Tu cita demo ha sido cancelada.\n\n" +
+        getMenuMessage()
         );
       }
 
@@ -175,34 +178,70 @@ async function handleDemoMessage({
         "Ejemplo: 14:30\n\n0️⃣ Volver al menú"
       );
 
-    case "ASK_TIME":
+        case "ASK_TIME":
 
-      if (text === "0") {
+        if (text === "0") {
+            session.step = "MENU";
+            return sendMessage(getMenuMessage());
+        }
+
+        // ✅ Intentar parsear 24h primero (HH:mm)
+        let parsedTime = null;
+
+        const time24Regex = /^([0-1]?\d|2[0-3]):([0-5]\d)$/;
+        const match24 = text.match(time24Regex);
+
+        if (match24) {
+            const hour = match24[1].padStart(2, "0");
+            const minute = match24[2];
+            parsedTime = `${hour}:${minute}`;
+        }
+
+        // ✅ Intentar parsear formato 12h (am/pm)
+        if (!parsedTime) {
+            const cleaned = text.replace(/\s+/g, "").toLowerCase();
+            const time12Regex = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/;
+            const match12 = cleaned.match(time12Regex);
+
+            if (match12) {
+            let hour = parseInt(match12[1], 10);
+            const minute = match12[2] || "00";
+            const period = match12[3];
+
+            if (hour >= 1 && hour <= 12) {
+                if (period === "pm" && hour !== 12) hour += 12;
+                if (period === "am" && hour === 12) hour = 0;
+
+                parsedTime = `${hour.toString().padStart(2, "0")}:${minute}`;
+            }
+            }
+        }
+
+        if (!parsedTime) {
+            return sendMessage(
+            "Hora inválida.\n\nPuedes escribir:\n" +
+            "• 14:30\n" +
+            "• 2:30pm\n" +
+            "• 2 pm\n\n" +
+            "0️⃣ Volver al menú"
+            );
+        }
+
+        const startAtISO = `${session.tempDateISO}T${parsedTime}:00`;
+
+        session.appointment = { startAtISO };
         session.step = "MENU";
-        return sendMessage(getMenuMessage());
-      }
 
-      const timeRegex = /^([0-1]\d|2[0-3]):([0-5]\d)$/;
-
-      if (!timeRegex.test(text)) {
-        return sendMessage("Hora inválida. Usa formato HH:mm");
-      }
-
-      const startAtISO = `${session.tempDateISO}T${text}:00`;
-
-      session.appointment = { startAtISO };
-      session.step = "MENU";
-
-      const confirmedDate = DateTime.fromISO(startAtISO, {
-        zone: clinic.timeZone
-      });
+        const confirmedDate = DateTime.fromISO(startAtISO, {
+            zone: clinic.timeZone
+        });
 
         return sendMessage(
-        "✅ *Cita demo confirmada*\n\n" +
-        `📅 ${confirmedDate.toFormat("dd/MM/yyyy")}\n` +
-        `⏰ ${confirmedDate.toFormat("hh:mm a")}\n\n` +
-        "Así funciona el sistema real con tus pacientes.\n\n" +
-        getMenuMessage()
+            "✅ *Cita demo confirmada*\n\n" +
+            `📅 ${confirmedDate.toFormat("dd/MM/yyyy")}\n` +
+            `⏰ ${confirmedDate.toFormat("hh:mm a")}\n\n` +
+            "Así funciona el sistema real con tus pacientes.\n\n" +
+            getMenuMessage()
         );
 
     default:
