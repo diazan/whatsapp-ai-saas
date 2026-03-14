@@ -9,7 +9,6 @@ function getKey(clinicId, patientPhone) {
 
 function createOrRefreshSession(clinicId, patientPhone) {
   const key = getKey(clinicId, patientPhone);
-
   const expiresAt = Date.now() + DEMO_TTL_MINUTES * 60 * 1000;
 
   let session = demoSessions.get(key);
@@ -18,9 +17,9 @@ function createOrRefreshSession(clinicId, patientPhone) {
     session = {
       step: "MENU",
       appointment: null,
+      tempDateISO: null,
       expiresAt
     };
-
     demoSessions.set(key, session);
   } else {
     session.expiresAt = expiresAt;
@@ -48,6 +47,17 @@ function isUserInDemo(clinicId, patientPhone) {
   return true;
 }
 
+function getMenuMessage() {
+  return (
+    "🧪 *DEMO INTERACTIVA KERBO*\n\n" +
+    "1️⃣ Agendar cita\n" +
+    "2️⃣ Ver mi cita\n" +
+    "3️⃣ Reprogramar cita\n" +
+    "4️⃣ Cancelar cita\n" +
+    "5️⃣ Salir demo"
+  );
+}
+
 async function handleDemoMessage({
   clinic,
   message,
@@ -55,22 +65,12 @@ async function handleDemoMessage({
   sendMessage
 }) {
   const text = message.toLowerCase().trim();
-
   const session = createOrRefreshSession(clinic.id, patientPhone);
 
-  // 🔹 INICIO FORZADO DESDE SALES BOT
+  // 🔹 Inicio forzado desde Sales Bot
   if (message === "__start__") {
     session.step = "MENU";
-
-    return sendMessage(
-      "🧪 *DEMO INTERACTIVA KERBO*\n\n" +
-      "Aquí puedes probar cómo funciona el agendamiento automático.\n\n" +
-      "1️⃣ Agendar cita\n" +
-      "2️⃣ Ver mi cita\n" +
-      "3️⃣ Reprogramar cita\n" +
-      "4️⃣ Cancelar cita\n" +
-      "0️⃣ Salir demo"
-    );
+    return sendMessage(getMenuMessage());
   }
 
   switch (session.step) {
@@ -132,7 +132,7 @@ async function handleDemoMessage({
         );
       }
 
-      if (text === "0") {
+      if (text === "5") {
         destroySession(clinic.id, patientPhone);
 
         return sendMessage(
@@ -145,55 +145,41 @@ async function handleDemoMessage({
 
     case "ASK_DATE":
 
-    if (text === "0") {
+      if (text === "0") {
         session.step = "MENU";
-        return sendMessage(
-        "🧪 *DEMO INTERACTIVA KERBO*\n\n" +
-        "1️⃣ Agendar cita\n" +
-        "2️⃣ Ver mi cita\n" +
-        "3️⃣ Reprogramar cita\n" +
-        "4️⃣ Cancelar cita\n" +
-        "0️⃣ Salir demo"
-        );
-    }
+        return sendMessage(getMenuMessage());
+      }
 
-    // ✅ Validación robusta con Luxon
-    const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
+      // ✅ Validación robusta con Luxon
+      const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
         zone: clinic.timeZone
-    });
+      });
 
-    if (!dateObj.isValid) {
+      if (!dateObj.isValid) {
         return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
-    }
+      }
 
-    const today = DateTime.now().setZone(clinic.timeZone).startOf("day");
+      const today = DateTime.now()
+        .setZone(clinic.timeZone)
+        .startOf("day");
 
-    if (dateObj < today) {
+      if (dateObj < today) {
         return sendMessage("No puedes agendar una fecha pasada.");
-    }
+      }
 
-    const dateISO = dateObj.toFormat("yyyy-MM-dd");
+      session.tempDateISO = dateObj.toFormat("yyyy-MM-dd");
+      session.step = "ASK_TIME";
 
-    session.tempDateISO = dateISO;
-    session.step = "ASK_TIME";
-
-    return sendMessage(
+      return sendMessage(
         "⏰ Ingresa la hora en formato HH:mm\n" +
         "Ejemplo: 14:30\n\n0️⃣ Volver al menú"
-    );
+      );
 
     case "ASK_TIME":
 
       if (text === "0") {
         session.step = "MENU";
-        return sendMessage(
-          "🧪 *DEMO INTERACTIVA KERBO*\n\n" +
-          "1️⃣ Agendar cita\n" +
-          "2️⃣ Ver mi cita\n" +
-          "3️⃣ Reprogramar cita\n" +
-          "4️⃣ Cancelar cita\n" +
-          "0️⃣ Salir demo"
-        );
+        return sendMessage(getMenuMessage());
       }
 
       const timeRegex = /^([0-1]\d|2[0-3]):([0-5]\d)$/;
@@ -207,21 +193,21 @@ async function handleDemoMessage({
       session.appointment = { startAtISO };
       session.step = "MENU";
 
-      const date = DateTime.fromISO(startAtISO, {
+      const confirmedDate = DateTime.fromISO(startAtISO, {
         zone: clinic.timeZone
       });
 
       return sendMessage(
         "✅ *Cita demo confirmada*\n\n" +
-        `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
-        `⏰ ${date.toFormat("hh:mm a")}\n\n` +
+        `📅 ${confirmedDate.toFormat("dd/MM/yyyy")}\n` +
+        `⏰ ${confirmedDate.toFormat("hh:mm a")}\n\n` +
         "Así funciona el sistema real con tus pacientes.\n\n" +
         "0️⃣ Volver al menú"
       );
 
     default:
       session.step = "MENU";
-      return sendMessage("Volviendo al menú demo.");
+      return sendMessage(getMenuMessage());
   }
 }
 
