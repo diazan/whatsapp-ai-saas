@@ -197,13 +197,13 @@ async function handleDemoMessage({
         zone: clinic.timeZone
       });
 
-      return sendMessage(
+        return sendMessage(
         "✅ *Cita demo confirmada*\n\n" +
         `📅 ${confirmedDate.toFormat("dd/MM/yyyy")}\n` +
         `⏰ ${confirmedDate.toFormat("hh:mm a")}\n\n` +
         "Así funciona el sistema real con tus pacientes.\n\n" +
-        "0️⃣ Volver al menú"
-      );
+        getMenuMessage()
+        );
 
     default:
       session.step = "MENU";
