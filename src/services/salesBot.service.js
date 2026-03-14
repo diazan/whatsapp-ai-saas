@@ -189,54 +189,54 @@ const handleSalesBotMessage = async ({
 
     case SALES_STATES.SHOW_RESULT:
 
-      if (text === "0") {
-        return sendMessage(
-          `Con aproximadamente ${conversation.context.estimatedVolume} citas al mes,\n\n` +
-          `📉 Podrías estar perdiendo alrededor de ${Math.floor(conversation.context.estimatedVolume * ESTIMATED_NO_SHOW_RATE)} citas.\n\n` +
-          `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${conversation.context.estimatedRecovery} citas mensuales.\n\n` +
-          "¿Te gustaría agendar una demo personalizada?\n\n" +
-          "1️⃣ Sí, agendar demo\n" +
-          "2️⃣ Más información\n\n" +
-          "0️⃣ Volver atrás"
-        );
-      }
+    if (text === "0") {
+      return sendMessage(
+        `Con aproximadamente ${conversation.context.estimatedVolume} citas al mes,\n\n` +
+        `📉 Podrías estar perdiendo alrededor de ${Math.floor(conversation.context.estimatedVolume * ESTIMATED_NO_SHOW_RATE)} citas.\n\n` +
+        `📈 Nuestro sistema puede ayudarte a recuperar aproximadamente ${conversation.context.estimatedRecovery} citas mensuales.\n\n` +
+        "¿Te gustaría agendar una demo personalizada?\n\n" +
+        "1️⃣ Sí, agendar demo\n" +
+        "2️⃣ Más información\n" +
+        "3️⃣ Probar cómo funciona el agendamiento\n\n" +
+        "0️⃣ Volver atrás"
+      );
+    }
 
-      if (text === "1") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.BOOKING_DATE
-        });
+    if (text === "1") {
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.BOOKING_DATE
+      });
 
-        return sendMessage(
-          "Perfecto ✅\n\n" +
-          "¿Para qué fecha deseas la demo?\n" +
-          "Formato: DD/MM/AAAA\n\n" +
-          "0️⃣ Volver atrás"
-        );
-      }
+      return sendMessage(
+        "Perfecto ✅\n\n" +
+        "¿Para qué fecha deseas la demo?\n" +
+        "Formato: DD/MM/AAAA\n\n" +
+        "0️⃣ Volver atrás"
+      );
+    }
 
-      if (text === "2") {
-        return sendMessage(
-          "Nuestro sistema incluye:\n\n" +
-          "✅ Agendamiento automático por WhatsApp\n" +
-          "✅ Confirmaciones y recordatorios automáticos\n" +
-          "✅ Cancelación y reprogramación sin intervención humana\n" +
-          "✅ Panel con métricas reales de ocupación\n" +
-          "✅ Además, te brinda mayor control y organización sobre tu agenda.\n\n" +
-          "Escribe 1 cuando quieras agendar tu demo.\n\n" +
-          "0️⃣ Volver atrás"
-        );
-      }
+    if (text === "2") {
+      return sendMessage(
+        "Nuestro sistema incluye:\n\n" +
+        "✅ Agendamiento automático por WhatsApp\n" +
+        "✅ Confirmaciones y recordatorios automáticos\n" +
+        "✅ Cancelación y reprogramación sin intervención humana\n" +
+        "✅ Panel con métricas reales de ocupación\n\n" +
+        "Escribe 1 cuando quieras agendar tu demo.\n\n" +
+        "0️⃣ Volver atrás"
+      );
+    }
 
-      if (text === "3") {
-        return handleDemoMessage({
-          clinic,
-          message: "__start__",
-          patientPhone,
-          sendMessage
-        });
-      }
+    if (text === "3") {
+      return handleDemoMessage({
+        clinic,
+        message: "__start__",
+        patientPhone,
+        sendMessage
+      });
+    }
 
-      return sendMessage("Elige una opción válida.");
+    return sendMessage("Elige una opción válida.");
 
     case SALES_STATES.BOOKING_DATE: {
 
