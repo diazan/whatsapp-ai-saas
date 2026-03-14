@@ -57,11 +57,13 @@ const createAppointment = async ({
     throw new Error("Invalid date format");
   }
 
-  // ✅ 4️⃣ Evitar citas en el pasado (timezone clínica)
   const nowInClinicTz = DateTime.now().setZone(clinic.timeZone);
 
-  if (startDateTime <= nowInClinicTz) {
-    throw new Error("Cannot book in the past");
+  // ✅ Buffer mínimo de 5 minutos (igual que en reschedule)
+  const minimumStartTime = nowInClinicTz.plus({ minutes: 5 });
+
+  if (startDateTime < minimumStartTime) {
+    throw new Error("Cannot book with less than 5 minutes notice");
   }
 
   const endDateTime = startDateTime.plus({
