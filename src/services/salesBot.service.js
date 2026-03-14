@@ -10,6 +10,10 @@ const { createAppointment } = require("./bookingService");
 
 const prisma = require("../lib/prisma");
 const { DateTime } = require("luxon");
+const {
+  handleDemoMessage,
+  isUserInDemo
+} = require("./demoClinic.service");
 
 const SALES_STATES = {
   IDLE: "SALES_IDLE",
@@ -86,6 +90,17 @@ const handleSalesBotMessage = async ({
 }) => {
 
   const text = message.toLowerCase().trim();
+
+    // ✅ Si el usuario está dentro de la demo interactiva,
+  // delegamos completamente al módulo demo (sin tocar DB)
+  if (isUserInDemo(clinic.id, patientPhone)) {
+    return handleDemoMessage({
+      clinic,
+      message,
+      patientPhone,
+      sendMessage
+    });
+  }
 
   const conversation = await getOrCreateConversation({
     clinicId: clinic.id,
@@ -166,7 +181,8 @@ const handleSalesBotMessage = async ({
         `permitiéndote visualizar mejor tus citas y reducir el caos operativo.\n\n` +
         "¿Te gustaría agendar una demo personalizada?\n\n" +
         "1️⃣ Sí, agendar demo\n" +
-        "2️⃣ Más información\n\n" +
+        "2️⃣ Más información\n" +
+        "3️⃣ Probar cómo funciona el agendamiento\n\n" +
         "0️⃣ Volver atrás"
       );
     }
@@ -209,6 +225,15 @@ const handleSalesBotMessage = async ({
           "Escribe 1 cuando quieras agendar tu demo.\n\n" +
           "0️⃣ Volver atrás"
         );
+      }
+
+      if (text === "3") {
+        return handleDemoMessage({
+          clinic,
+          message: "__start__",
+          patientPhone,
+          sendMessage
+        });
       }
 
       return sendMessage("Elige una opción válida.");
