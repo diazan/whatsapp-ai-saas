@@ -7,6 +7,7 @@ const {
   login,
   listAppointments,
   changeAppointmentStatus,
+  listSalesDemos
 } = require("../controllers/admin.controller");
 
 const { authenticateAdmin } = require("../middleware/auth.middleware");
@@ -20,6 +21,12 @@ router.get(
   "/appointments",
   authenticateAdmin,
   listAppointments
+);
+
+router.get(
+  "/sales-demos",
+  authenticateAdmin,
+  listSalesDemos
 );
 
 router.patch(

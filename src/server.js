@@ -13,6 +13,9 @@ const webhookRoutes = require("./routes/webhook");
 const requestLogger = require('./middleware/requestLogger');
 const adminRoutes = require("./routes/admin.routes");
 const app = express();
+console.log("🚀 SERVER FILE ACTIVO");
+console.log("🗄️ DATABASE_URL usada por la app:");
+console.log(process.env.DATABASE_URL);
 
 
 const allowedOrigins = [
@@ -61,7 +64,9 @@ app.use((req, res, next) => {
 app.use(requestLogger);
 // ✅ Montar rutas
 app.use("/api", testRoutes);
+console.log("📌 Mounting /webhook route");
 app.use("/webhook", webhookRoutes);
+console.log("✅ /webhook route mounted");
 app.use("/admin", adminRoutes);
 
 app.get("/", (req, res) => {

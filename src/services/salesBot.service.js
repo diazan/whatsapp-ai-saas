@@ -11,6 +11,11 @@ const prisma = require("../lib/prisma");
 const { DateTime } = require("luxon");
 
 const {
+  parseTimeInput,
+  buildFutureDateTime
+} = require("../utils/date.utils");
+
+const {
   handleDemoMessage,
   isUserInDemo
 } = require("./demoClinic.service");
@@ -104,6 +109,22 @@ const handleSalesBotMessage = async ({
     patientName: null
   });
 
+  // ✅ Escape global al inicio
+if (text === "0") {
+
+  await updateConversation(conversation.id, {
+    state: SALES_STATES.PROBLEM_HOOK,
+    context: {}
+  });
+
+  return sendMessage(
+    "👋 Volvemos al inicio.\n\n" +
+    "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
+    "¿Quieres ver cómo funciona?\n\n" +
+    "1️⃣ Sí, muéstrame"
+  );
+}
+
   if (conversation.expired) {
     await updateConversation(conversation.id, {
       state: SALES_STATES.IDLE,
@@ -122,8 +143,10 @@ const handleSalesBotMessage = async ({
     });
 
     return sendMessage(
-      "👋 Hola, gracias por comunicarte con *Kerbo*.\n\n" +
-      "¿Quieres ver cómo funciona?\n\n" +
+      "👋 Hola. ¡Gracias por comunicarte con *Kerbo*!\n\n" +
+      "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
+      "*Kerbo-flow* ayuda a reducir eso automáticamente con confirmaciones y recordatorios por WhatsApp.\n\n" +
+      "¿Quieres ver cómo funciona en tu clínica?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
   }
@@ -138,9 +161,10 @@ const handleSalesBotMessage = async ({
         });
 
         return sendMessage(
+          "Perfecto ✅\n\n" +
           "¿Cuántas citas gestionas al mes aproximadamente?\n\n" +
           "1️⃣ Menos de 100\n" +
-          "2️⃣ 100 - 300\n" +
+          "2️⃣ 100 – 300\n" +
           "3️⃣ Más de 300"
         );
       }
@@ -164,11 +188,14 @@ const handleSalesBotMessage = async ({
       });
 
       return sendMessage(
-        `Podrías recuperar aproximadamente ${recoverable} citas al mes.\n\n` +
+        `Con aproximadamente ${volume} citas al mes,\n\n` +
+        `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
+        `📈 Kerbo puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
+        "¿Te gustaría agendar una demo personalizada?\n\n" +
         "1️⃣ Sí, agendar demo\n" +
         "2️⃣ Más información\n" +
         "3️⃣ Probar cómo funciona\n\n" +
-        "0️⃣ Volver atrás"
+        "0️⃣ Volver al inicio"
       );
     }
 
@@ -179,11 +206,19 @@ const handleSalesBotMessage = async ({
           state: SALES_STATES.BOOKING_DATE
         });
 
-        return sendMessage("¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver atrás");
+        return sendMessage("¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver al inicio");
       }
 
       if (text === "2") {
-        return sendMessage("Kerbo automatiza agenda y recordatorios.\n\nEscribe 1 para agendar.");
+        return sendMessage(
+          "Nuestro sistema incluye:\n\n" +
+          "✅ Agendamiento automático por WhatsApp\n" +
+          "✅ Confirmaciones y recordatorios automáticos\n" +
+          "✅ Cancelación y reprogramación sin intervención humana\n" +
+          "✅ Panel con métricas reales de ocupación\n\n" +
+          "Escribe 1 cuando quieras agendar tu demo.\n\n" +
+          "0️⃣ Volver al inicio"
+        );
       }
 
       if (text === "3") {
@@ -199,95 +234,92 @@ const handleSalesBotMessage = async ({
 
     case SALES_STATES.BOOKING_DATE: {
 
-      if (text === "0") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.SHOW_RESULT
-        });
-        return sendMessage("1️⃣ Agendar demo\n2️⃣ Más info\n3️⃣ Probar demo");
-      }
-
-      const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
-        zone: clinic.timeZone
-      });
-
-      if (!dateObj.isValid) return sendMessage("Fecha inválida.");
-
-      const selectedDateISO = dateObj.toFormat("yyyy-MM-dd");
-      const todayISO = DateTime.now().setZone(clinic.timeZone).toFormat("yyyy-MM-dd");
-
-      if (selectedDateISO < todayISO) return sendMessage("No puedes agendar fecha pasada.");
-
-      const serviceId = await getDemoServiceId(clinic.id);
-      if (!serviceId) return sendMessage("Servicio no configurado.");
-
-      const slots = await getAvailableSlotsForDay({
-        clinicId: clinic.id,
-        serviceId,
-        dateISO: selectedDateISO
-      });
-
-      if (!slots.length) return sendMessage("No hay horarios disponibles.");
-
+    if (text === "0") {
       await updateConversation(conversation.id, {
-        state: SALES_STATES.BOOKING_TIME,
-        context: { dateISO: selectedDateISO, serviceId, availableSlots: slots }
+        state: SALES_STATES.SHOW_RESULT
       });
-
-      let response = "Estos horarios están disponibles:\n\n";
-      slots.forEach((slot, index) => {
-        response += `${index + 1}️⃣ ${slot}\n`;
-      });
-
-      response += "4️⃣ Necesito otro horario\n\n0️⃣ Volver atrás";
-
-      return sendMessage(response);
+      return sendMessage("1️⃣ Agendar demo\n2️⃣ Más info\n3️⃣ Probar demo");
     }
 
-    case SALES_STATES.BOOKING_TIME: {
+    const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
+      zone: clinic.timeZone
+    });
 
-      if (text === "0") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.BOOKING_DATE
-        });
-        return sendMessage("Ingresa fecha DD/MM/AAAA");
-      }
-
-      if (text === "4") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.CUSTOM_TIME
-        });
-        return sendMessage("Escribe la hora (3pm, 3:30pm, 15:30)");
-      }
-
-      let selected = null;
-
-      if (/^\d+$/.test(text)) {
-        const index = parseInt(text, 10);
-        selected = conversation.context.availableSlots?.[index - 1];
-      }
-
-      if (!selected) {
-        const manualTime = parseTime(text);
-        if (manualTime) selected = manualTime;
-      }
-
-      if (!selected || !conversation.context.availableSlots.includes(selected)) {
-        return sendMessage("Elige uno de los horarios mostrados.");
-      }
-
-      const startAtISO = DateTime.fromISO(
-        `${conversation.context.dateISO}T${selected}`,
-        { zone: clinic.timeZone }
-      ).toISO();
-
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.ASK_NAME,
-        context: { ...conversation.context, startAtISO }
-      });
-
-      return sendMessage("¿Con qué nombre agendamos?\n\n0️⃣ Volver atrás");
+    if (!dateObj.isValid) {
+      return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
     }
 
+    const selectedDateISO = dateObj.toFormat("yyyy-MM-dd");
+    const todayISO = DateTime.now()
+      .setZone(clinic.timeZone)
+      .toFormat("yyyy-MM-dd");
+
+    if (selectedDateISO < todayISO) {
+      return sendMessage("No puedes agendar fecha pasada.");
+    }
+
+    // ✅ Guardar fecha en contexto SIN serviceId
+    await updateConversation(conversation.id, {
+      state: SALES_STATES.BOOKING_TIME,
+      context: { dateISO: selectedDateISO }
+    });
+
+    return sendMessage(
+      "⏰ ¿Qué hora te queda mejor?\n\n" +
+      "Puedes escribir por ejemplo:\n" +
+      "• 14:30\n" +
+      "• 3pm\n\n" +
+      "0️⃣ Volver atrás"
+    );
+  }
+
+  case SALES_STATES.BOOKING_TIME: {
+
+    if (text === "0") {
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.BOOKING_DATE
+      });
+      return sendMessage("Ingresa fecha DD/MM/AAAA");
+    }
+
+    const manualTime = parseTimeInput(text);
+
+    if (!manualTime) {
+      return sendMessage(
+        "Hora inválida.\n\n" +
+        "Puedes escribir por ejemplo:\n" +
+        "• 14:30\n" +
+        "• 3pm\n" +
+        "• 3:30pm\n\n" +
+        "0️⃣ Volver atrás"
+      );
+    }
+
+    const proposedDateTime = buildFutureDateTime({
+      dateISO: conversation.context.dateISO,
+      time: manualTime,
+      timeZone: clinic.timeZone
+    });
+
+    if (!proposedDateTime) {
+      return sendMessage(
+        "Esa hora ya pasó ⏳\n\n" +
+        "Por favor elige una hora futura."
+      );
+    }
+
+    await updateConversation(conversation.id, {
+      state: SALES_STATES.ASK_NAME,
+      context: {
+        ...conversation.context,
+        startAtISO: proposedDateTime.toISO()
+      }
+    });
+
+    return sendMessage(
+      "✅ Perfecto.\n\n¿Con qué nombre agendamos la demo?\n\n0️⃣ Volver atrás"
+    );
+  }
     case SALES_STATES.CUSTOM_TIME: {
 
       if (text === "0") {
@@ -320,49 +352,50 @@ const handleSalesBotMessage = async ({
       return sendMessage("¿Con qué nombre agendamos?");
     }
 
-    case SALES_STATES.ASK_NAME: {
+case SALES_STATES.ASK_NAME: {
 
-      if (!text || text.length < 2) {
-        return sendMessage("Por favor indícame tu nombre 😊");
+  if (!text || text.length < 2) {
+    return sendMessage("Por favor indícame tu nombre 😊");
+  }
+
+  try {
+    const preferredAtUTC = new Date(conversation.context.startAtISO);
+
+    await prisma.salesDemoRequest.create({
+      data: {
+        clinicId: clinic.id,
+        name: text.trim(),
+        phone: patientPhone,
+        preferredAt: preferredAtUTC
       }
+    });
 
-      try {
+    await closeConversation(conversation.id, SALES_STATES.COMPLETED);
 
-        await createAppointment({
-          clinicId: clinic.id,
-          serviceId: conversation.context.serviceId,
-          patientName: message.trim(),
-          patientPhone,
-          startAt: conversation.context.startAtISO
-        });
+    const date = DateTime.fromISO(
+      conversation.context.startAtISO,
+      { zone: clinic.timeZone }
+    );
 
-        await closeConversation(conversation.id, SALES_STATES.COMPLETED);
+    return sendMessage(
+  `✅ *Solicitud de demo recibida*\n\n` +
+  `Gracias, *${text.trim()}* 🙌\n\n` +
+  `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
+  `⏰ ${date.toFormat("hh:mm a")}\n\n` +
+  "Te enviaremos el enlace de Google Meet aproximadamente 15 minutos antes de la cita.\n\n" +
+  "¡Nos vemos pronto! 🚀"
+);
 
-        const date = DateTime.fromISO(
-          conversation.context.startAtISO,
-          { zone: clinic.timeZone }
-        );
+  } catch (error) {
 
-        return sendMessage(
-          `✅ Demo confirmada\n\n📅 ${date.toFormat("dd/MM/yyyy")}\n⏰ ${date.toFormat("hh:mm a")}`
-        );
+    console.log("🔴 SALES DEMO SAVE ERROR:", error.message);
 
-      } catch (error) {
-
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.BOOKING_TIME
-        });
-
-        let response = "Ese horario no está disponible.\n\n";
-        conversation.context.availableSlots.forEach((slot, index) => {
-          response += `${index + 1}️⃣ ${slot}\n`;
-        });
-
-        response += "4️⃣ Necesito otro horario";
-
-        return sendMessage(response);
-      }
-    }
+    return sendMessage(
+      "Hubo un problema guardando tu solicitud.\n" +
+      "Por favor intenta nuevamente."
+    );
+  }
+}
 
     default:
       return sendMessage("Escribe *inicio* para comenzar.");

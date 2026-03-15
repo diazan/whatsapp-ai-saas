@@ -17,10 +17,12 @@ model Clinic {
   timeZone      String           @default("America/Mexico_City")
   email         String?          @unique
   passwordHash  String?
-  appointments  Appointment[]
-  schedules     ClinicSchedule[]
-  conversations Conversation[]
-  services      Service[]
+
+  appointments      Appointment[]
+  schedules         ClinicSchedule[]
+  conversations     Conversation[]
+  services          Service[]
+  salesDemoRequests SalesDemoRequest[]
 }
 
 model Service {
@@ -31,6 +33,7 @@ model Service {
   active       Boolean       @default(true)
   createdAt    DateTime      @default(now())
   displayOrder Int           @default(0)
+
   appointments Appointment[]
   clinic       Clinic        @relation(fields: [clinicId], references: [id])
 
@@ -48,8 +51,9 @@ model Appointment {
   status       String   @default("scheduled")
   reminderSent Boolean  @default(false)
   createdAt    DateTime @default(now())
-  clinic       Clinic   @relation(fields: [clinicId], references: [id])
-  service      Service  @relation(fields: [serviceId], references: [id])
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
 
   @@index([clinicId, startAt])
   @@index([clinicId, patientPhone])
@@ -66,7 +70,8 @@ model Conversation {
   lastMessageAt DateTime @default(now())
   expiresAt     DateTime
   createdAt     DateTime @default(now())
-  clinic        Clinic   @relation(fields: [clinicId], references: [id])
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
 
   @@index([clinicId, patientPhone])
   @@index([clinicId, active])
@@ -80,8 +85,24 @@ model ClinicSchedule {
   closeTime String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  clinic    Clinic   @relation(fields: [clinicId], references: [id])
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
 
   @@unique([clinicId, dayOfWeek])
   @@index([clinicId])
+}
+
+model SalesDemoRequest {
+  id          String   @id @default(uuid())
+  clinicId    String
+  name        String
+  phone       String
+  preferredAt DateTime
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
+
+  @@index([clinicId])
+  @@index([status])
 }

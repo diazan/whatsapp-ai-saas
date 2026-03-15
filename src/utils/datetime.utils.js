@@ -1,21 +1,7 @@
-function parseDate(text) {
-  const [day, month, year] = text.split("/");
-
-  if (!day || !month || !year) return null;
-
-  const date = new Date(`${year}-${month}-${day}T00:00:00`);
-
-  if (isNaN(date.getTime())) return null;
-
-  return date;
-}
-
-
-
 const { DateTime } = require("luxon");
 
 /**
- * Parsea hora:
+ * Parsea hora en formato:
  * - 14:30
  * - 3pm
  * - 3:30pm
@@ -56,7 +42,7 @@ function parseTimeInput(text) {
 }
 
 /**
- * Construye DateTime futuro validado
+ * Construye DateTime y valida que sea futuro
  */
 function buildFutureDateTime({ dateISO, time, timeZone }) {
   const proposed = DateTime.fromISO(
@@ -72,8 +58,8 @@ function buildFutureDateTime({ dateISO, time, timeZone }) {
 
   return proposed;
 }
+
 module.exports = {
-  parseDate,
   parseTimeInput,
   buildFutureDateTime
 };

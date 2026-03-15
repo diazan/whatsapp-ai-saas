@@ -53,6 +53,9 @@ const createAppointment = async ({
     setZone: true,
   });
 
+  console.log("🟢 START ISO:", startDateTime.toISO());
+  console.log("🟢 START JS:", startDate);
+
   if (!startDateTime.isValid) {
     throw new Error("Invalid date format");
   }
@@ -109,6 +112,8 @@ const createAppointment = async ({
     },
   });
 
+  console.log("🟡 NOW ISO:", nowInClinicTz.toISO());
+
   return appointment;
 };
 
@@ -148,11 +153,15 @@ const rescheduleAppointment = async ({
     setZone: true,
   });
 
+  console.log("🟢 START ISO:", startDateTime.toISO());
+
   if (!startDateTime.isValid) {
     throw new Error("Invalid date format");
   }
 
   const nowInClinicTz = DateTime.now().setZone(clinic.timeZone);
+
+  console.log("🟡 NOW ISO:", nowInClinicTz.toISO());
 
   // ✅ Buffer mínimo de 5 minutos
   const minimumStartTime = nowInClinicTz.plus({ minutes: 5 });
@@ -168,7 +177,12 @@ const rescheduleAppointment = async ({
   const startDate = startDateTime.toJSDate();
   const endDate = endDateTime.toJSDate();
 
+  console.log("🟠 VALIDATING SCHEDULE...");
+
   await validateClinicSchedule(clinicId, startDate, endDate);
+
+  console.log("✅ SCHEDULE VALID");
+
 
   const overlapping = await prisma.appointment.findFirst({
     where: {
@@ -185,6 +199,8 @@ const rescheduleAppointment = async ({
       },
     },
   });
+
+  console.log("🔵 OVERLAPPING RESULT:", overlapping);
 
   if (overlapping) {
     throw new Error("Time slot not available");

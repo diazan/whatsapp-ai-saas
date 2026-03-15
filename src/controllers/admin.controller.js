@@ -16,6 +16,22 @@ const healthCheck = async (req, res) => {
   });
 };
 
+const prisma = require("../lib/prisma");
+
+const listSalesDemos = async (req, res) => {
+  try {
+    const demos = await prisma.salesDemoRequest.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json(demos);
+
+  } catch (error) {
+    console.error("Error listing sales demos:", error.message);
+    res.status(500).json({ error: "Error listing sales demos" });
+  }
+};
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -128,4 +144,5 @@ module.exports = {
   login,
   listAppointments,
   changeAppointmentStatus,
+  listSalesDemos
 };
