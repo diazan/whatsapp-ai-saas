@@ -9,6 +9,10 @@ const sendWhatsAppMessage = async ({
   to,
   message,
 }) => {
+    console.log("==== TOKEN DEBUG ====");
+  console.log("accessToken VALUE:", accessToken);
+  console.log("accessToken LENGTH:", accessToken?.length);
+  console.log("=====================");
   try {
     // ✅ Validaciones básicas para evitar errores silenciosos
     if (!accessToken) {
