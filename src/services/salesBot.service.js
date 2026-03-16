@@ -6,6 +6,8 @@ const {
 
 const { getAvailableSlotsForDay } = require("./availability.service");
 const { createAppointment } = require("./bookingService");
+const { evaluateSalesNotification } = require("./salesNotificationService");
+const { sendWhatsAppMessage } = require("./whatsappService");
 
 const prisma = require("../lib/prisma");
 const { DateTime } = require("luxon");
@@ -29,7 +31,8 @@ const SALES_STATES = {
   BOOKING_TIME: "SALES_BOOKING_TIME",
   CUSTOM_TIME: "SALES_CUSTOM_TIME",
   ASK_NAME: "SALES_ASK_NAME",
-  COMPLETED: "SALES_COMPLETED"
+  COMPLETED: "SALES_COMPLETED",
+  RETURNING: "SALES_RETURNING"
 };
 
 const ESTIMATED_NO_SHOW_RATE = 0.15;
@@ -108,6 +111,62 @@ const handleSalesBotMessage = async ({
     patientPhone,
     patientName: null
   });
+
+  // ✅ Si ya tiene demo agendada → silencio total + notificar admin
+  const existingDemo = await prisma.salesDemoRequest.findFirst({
+    where: {
+      clinicId: clinic.id,
+      phone: patientPhone
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  if (existingDemo) {
+
+    // ✅ Permitir reinicio del flujo
+    if (text === "inicio" || text === "hola") {
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.RETURNING,
+        context: {}
+      });
+
+      return sendMessage(
+        "👋 Hola de nuevo. ¡Qué gusto verte por aquí!\n\n" +
+        "¿En qué podemos ayudarte?\n\n" +
+        "1️⃣ Ver información del servicio\n" +
+        "2️⃣ Agendar nueva demo"
+      );
+    }
+
+    // ✅ Si la conversación está activa en el flujo, dejar pasar al switch
+    const activeStates = [
+      SALES_STATES.PROBLEM_HOOK,
+      SALES_STATES.ASK_VOLUME,
+      SALES_STATES.SHOW_RESULT,
+      SALES_STATES.BOOKING_DATE,
+      SALES_STATES.BOOKING_TIME,
+      SALES_STATES.CUSTOM_TIME,
+      SALES_STATES.ASK_NAME,
+      SALES_STATES.RETURNING
+    ];
+
+    if (activeStates.includes(conversation.state)) {
+      // Dejar pasar al switch normalmente
+    } else {
+      // ✅ Fuera del flujo → silencio + notificar admin
+      evaluateSalesNotification({
+        phone: patientPhone,
+        clinic,
+        incomingMessage: message
+      }).catch(err => {
+        console.error("[salesNotification] Error silencioso:", err.message);
+      });
+
+      return;
+    }
+  }
+
+  console.log("[salesBot] Estado conversación:", conversation.state);
 
   // ✅ Escape global al inicio
 if (text === "0") {
@@ -364,11 +423,35 @@ case SALES_STATES.ASK_NAME: {
     await prisma.salesDemoRequest.create({
       data: {
         clinicId: clinic.id,
-        name: text.trim(),
+        name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
         phone: patientPhone,
         preferredAt: preferredAtUTC
       }
     });
+
+    // ✅ NUEVO — Notificar al admin cuando se agenda nueva demo
+    const adminPhone = process.env.ADMIN_PHONE;
+    if (adminPhone) {
+      const demoDate = DateTime.fromISO(
+        conversation.context.startAtISO,
+        { zone: clinic.timeZone }
+      );
+
+      sendWhatsAppMessage({
+        accessToken: clinic.accessToken,
+        phoneNumberId: clinic.phoneNumberId,
+        to: adminPhone,
+        message:
+          `🎉 *Nueva Demo Agendada*\n\n` +
+          `👤 *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}*\n` +
+          `📱 ${patientPhone}\n` +
+          `📅 ${demoDate.toFormat("dd/MM/yyyy")}\n` +
+          `⏰ ${demoDate.toFormat("hh:mm a")}\n\n` +
+          `Revisa el dashboard para más detalles.`
+      }).catch(err => {
+        console.error("[salesNotification] Error notificando nueva demo:", err.message);
+      });
+    }
 
     await closeConversation(conversation.id, SALES_STATES.COMPLETED);
 
@@ -379,7 +462,7 @@ case SALES_STATES.ASK_NAME: {
 
     return sendMessage(
   `✅ *Solicitud de demo recibida*\n\n` +
-  `Gracias, *${text.trim()}* 🙌\n\n` +
+  `Gracias, *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}* 🙌\n\n` +
   `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
   `⏰ ${date.toFormat("hh:mm a")}\n\n` +
   "Te enviaremos el enlace de Google Meet aproximadamente 15 minutos antes de la cita.\n\n" +
@@ -396,6 +479,40 @@ case SALES_STATES.ASK_NAME: {
     );
   }
 }
+
+case SALES_STATES.COMPLETED:
+  return;
+
+case SALES_STATES.RETURNING:
+  if (text === "1") {
+    await updateConversation(conversation.id, {
+      state: SALES_STATES.SHOW_RESULT  // ← cambia estado para que "1" siguiente vaya a booking
+    });
+
+    return sendMessage(
+      "Nuestro sistema incluye:\n\n" +
+      "✅ Agendamiento automático por WhatsApp\n" +
+      "✅ Confirmaciones y recordatorios automáticos\n" +
+      "✅ Cancelación y reprogramación sin intervención humana\n" +
+      "✅ Panel con métricas reales de ocupación\n\n" +
+      "¿Deseas agendar una nueva demo?\n\n" +
+      "1️⃣ Sí, agendar\n" +
+      "0️⃣ Volver al inicio"
+    );
+  }
+
+  if (text === "2") {
+    await updateConversation(conversation.id, {
+      state: SALES_STATES.BOOKING_DATE
+    });
+    return sendMessage("¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver al inicio");
+  }
+
+  return sendMessage(
+    "Por favor elige una opción:\n\n" +
+    "1️⃣ Ver información del servicio\n" +
+    "2️⃣ Agendar nueva demo"
+  );
 
     default:
       return sendMessage("Escribe *inicio* para comenzar.");

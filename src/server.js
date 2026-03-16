@@ -1,6 +1,8 @@
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
 console.log("🚀 SERVER STARTED");
-require("dotenv").config();
-
+console.log("META_APP_ID:", process.env.META_APP_ID);
+console.log("META_APP_SECRET length:", process.env.META_APP_SECRET?.length);
+console.log("META_WABA_ID:", process.env.META_WABA_ID);
 
 
 

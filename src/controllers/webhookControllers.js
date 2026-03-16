@@ -3,11 +3,13 @@ const { sendWhatsAppMessage } = require("../services/whatsappService");
 const {
   getReminderWindowAppointment
 } = require("../services/bookingService");
+const { evaluateClinicNotification } = require("../services/clinicNotificationService");
 
 const prisma = require("../lib/prisma"); // para confirmar/cancelar cita
 
 const processedMessages = new Set();
 // ✅ Protección simple anti-duplicado en memoria (suficiente para MVP)
+
 
 const handleWebhook = async (req, res) => {
   console.log("🔥 WEBHOOK HIT");
@@ -160,6 +162,7 @@ console.log("🧪 equal?:", clinic.phoneNumberId === process.env.DEMO_PHONE_NUMB
   clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID;
 
 if (isDemoClinic) {
+
   return handleSalesBotMessage({
     clinic,
     message: incomingText,
@@ -189,6 +192,12 @@ if (isDemoClinic) {
         });
       }
     });
+
+    evaluateClinicNotification({
+  phone: from,
+  clinic,
+  incomingMessage: incomingText
+}).catch(() => {});
 
   } catch (error) {
     console.error("❌ Webhook internal error:", error.message);
