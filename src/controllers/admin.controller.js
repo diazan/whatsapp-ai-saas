@@ -58,6 +58,7 @@ const login = async (req, res) => {
         id: clinic.id,
         name: clinic.name,
         email: clinic.email,
+        phoneNumberId: clinic.phoneNumberId
       },
     });
     } catch (error) {
