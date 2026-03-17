@@ -41,6 +41,18 @@ app.use(cors({
 app.use(express.json());
 app.use(requestLogger);
 
+// ────────────────────────────────────────
+// Health check — infraestructura únicamente
+// Sin auth, sin DB, sin lógica de negocio
+// Usado para keep-alive y monitoreo externo
+// ────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
 
 logger.info('✅ Logger inicializado correctamente');
 
