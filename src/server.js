@@ -14,10 +14,12 @@ const logger = require('./utils/logger');
 const webhookRoutes = require("./routes/webhook");
 const requestLogger = require('./middleware/requestLogger');
 const adminRoutes = require("./routes/admin.routes");
+const startKeepAlive = require('./utils/keepAlive');
 const app = express();
 console.log("🚀 SERVER FILE ACTIVO");
 console.log("🗄️ DATABASE_URL usada por la app:");
 console.log(process.env.DATABASE_URL);
+
 
 
 const allowedOrigins = [
@@ -92,4 +94,5 @@ const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   startReminderJob();
+  startKeepAlive();
 });
