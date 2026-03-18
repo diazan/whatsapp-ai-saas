@@ -129,6 +129,9 @@ const handleIncomingMessage = async ({
     case "WAITING_DATE":
       return handleDateSelection({ text, conversation, sendMessage });
 
+    case "WAITING_NAME": // 👈 NUEVO
+      return handleNameCollection({ text, conversation, sendMessage });
+
     case "WAITING_TIME":
       return handleTimeSelection({ text, clinic, conversation, sendMessage });
 
@@ -488,7 +491,7 @@ async function handleServiceSelection({ text, clinic, conversation, sendMessage 
   }
 
   await updateConversation(conversation.id, {
-    state: "WAITING_DATE",
+    state: "WAITING_NAME",
     context: {
       serviceId: selectedService.id,
       serviceName: selectedService.name,
@@ -498,7 +501,46 @@ async function handleServiceSelection({ text, clinic, conversation, sendMessage 
 
   return sendMessage(
     appendMainMenuOption(
-      `Perfecto ✅\n\nHas elegido: ${selectedService.name}\n\n` +
+      `Perfecto ✅\n\nHas elegido: *${selectedService.name}*\n\n` +
+      `¿A nombre de quién agendamos la cita?`
+
+    )
+  );
+}
+
+async function handleNameCollection({ text, conversation, sendMessage }) {
+
+  const name = text.trim();
+
+  // ✅ Validación básica
+  if (!name || name.length < 2) {
+    return sendMessage(
+      appendMainMenuOption(
+        "Por favor ingresa un nombre válido."
+      )
+    );
+  }
+
+  if (name.length > 100) {
+    return sendMessage(
+      appendMainMenuOption(
+        "El nombre es demasiado largo. Intenta nuevamente."
+      )
+    );
+  }
+
+  // ✅ Guardamos nombre en contexto y avanzamos a fecha
+  await updateConversation(conversation.id, {
+    state: "WAITING_DATE",
+    context: {
+      ...conversation.context,
+      patientName: name // 👈 Nombre capturado del usuario
+    }
+  });
+
+  return sendMessage(
+    appendMainMenuOption(
+      `Gracias 😊\n\n` +
       `¿Para qué fecha deseas la cita?\n` +
       `Formato: DD/MM/AAAA`
     )
@@ -585,7 +627,9 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
     await createAppointment({
       clinicId: clinic.id,
       serviceId: conversation.context.serviceId,
-      patientName: conversation.patientName || "Paciente",
+      patientName: conversation.context.patientName  // 👈 Del contexto (ingresado por usuario)
+                || conversation.patientName           // 👈 Fallback: perfil WhatsApp
+                || "Paciente",                        // 👈 Último recurso
       patientPhone: conversation.patientPhone,
       startAt: startAtISO,
     });
