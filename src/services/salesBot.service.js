@@ -420,14 +420,21 @@ case SALES_STATES.ASK_NAME: {
   try {
     const preferredAtUTC = new Date(conversation.context.startAtISO);
 
-    await prisma.salesDemoRequest.create({
-      data: {
-        clinicId: clinic.id,
-        name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
-        phone: patientPhone,
-        preferredAt: preferredAtUTC
-      }
-    });
+
+
+// Usar clinicId correcto para usuario de ventas
+const correctClinicId = clinic.email === 'sales@demo.com'
+  ? 'sales-clinic-uuid-12345678'  // Usuario de ventas
+  : clinic.id;  // Usuarios normales
+
+await prisma.salesDemoRequest.create({
+  data: {
+    clinicId: correctClinicId,  // ← ARREGLADO
+    name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
+    phone: patientPhone,
+    preferredAt: preferredAtUTC
+  }
+});
 
     // ✅ NUEVO — Notificar al admin cuando se agenda nueva demo
     const adminPhone = process.env.ADMIN_PHONE;
