@@ -422,7 +422,7 @@ case SALES_STATES.ASK_NAME: {
 
     await prisma.salesDemoRequest.create({
       data: {
-        clinicId: clinic.id,
+        clinicId: "sales-clinic-uuid-12345678",
         name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
         phone: patientPhone,
         preferredAt: preferredAtUTC
