@@ -170,9 +170,14 @@ const sendSalesMeetLink = async (req, res) => {
 
     const message = meetLink;
 
+    // 🎯 USAR PHONENUMBERID REAL PARA USUARIO DE VENTAS
+    const sendingPhoneNumberId = clinic.email === 'sales@demo.com' 
+      ? '993943513813000'  // PhoneNumberId real para envío
+      : clinic.phoneNumberId;
+
     const result = await sendWhatsAppMessage({
       accessToken: clinic.accessToken,
-      phoneNumberId: clinic.phoneNumberId,
+      phoneNumberId: sendingPhoneNumberId,  // ← ARREGLADO
       to: demo.phone,
       message
     });
