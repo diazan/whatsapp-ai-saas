@@ -54,27 +54,27 @@ const createAppointment = async ({
   });
 
   console.log("🟢 START ISO:", startDateTime.toISO());
-  console.log("🟢 START JS:", startDate);
 
-  if (!startDateTime.isValid) {
-    throw new Error("Invalid date format");
-  }
 
-  const nowInClinicTz = DateTime.now().setZone(clinic.timeZone);
+if (!startDateTime.isValid) {
+  throw new Error("Invalid date format");
+}
 
-  // ✅ Buffer mínimo de 5 minutos (igual que en reschedule)
-  const minimumStartTime = nowInClinicTz.plus({ minutes: 5 });
+const nowInClinicTz = DateTime.now().setZone(clinic.timeZone);
+const minimumStartTime = nowInClinicTz.plus({ minutes: 5 });
 
-  if (startDateTime < minimumStartTime) {
-    throw new Error("Cannot book with less than 5 minutes notice");
-  }
+if (startDateTime < minimumStartTime) {
+  throw new Error("Cannot book with less than 5 minutes notice");
+}
 
-  const endDateTime = startDateTime.plus({
-    minutes: service.durationMin,
-  });
+const endDateTime = startDateTime.plus({
+  minutes: service.durationMin,
+});
 
-  const startDate = startDateTime.toJSDate();
-  const endDate = endDateTime.toJSDate();
+const startDate = startDateTime.toJSDate(); // ✅ Declaración
+const endDate = endDateTime.toJSDate();
+
+console.log("🟢 START JS:", startDate); // ✅ Ahora sí puede usarse
 
   // ✅ 5️⃣ Validar horario de clínica
   await validateClinicSchedule(clinicId, startDate, endDate);

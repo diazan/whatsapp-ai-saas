@@ -34,7 +34,14 @@ const sendWhatsAppMessage = async ({
       console.error("❌ Missing message body");
       return { success: false, error: "Missing message body" };
     }
-
+    
+    console.log("==== REQUEST DEBUG ====");
+    console.log("phoneNumberId:", phoneNumberId);
+    console.log("to:", to);
+    console.log("to LENGTH:", to?.length);
+    console.log("to CHARCODE 0:", to?.charCodeAt(0));
+    console.log("message preview:", message?.substring(0, 50));
+    console.log("=======================");
     const response = await axios.post(
       `${BASE_URL}/${phoneNumberId}/messages`,
       {

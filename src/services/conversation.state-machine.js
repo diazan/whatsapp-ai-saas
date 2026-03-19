@@ -96,7 +96,7 @@ const handleIncomingMessage = async ({
     });
 
     return sendMessage(
-      "Hola 👋\n\n" +
+      "¡Hola! Bienvenido(a) a *Kerbo Odontología*👋\n\n" +
       "¿Qué deseas hacer?\n\n" +
       "1️⃣ Agendar cita\n" +
       "2️⃣ Cancelar cita\n" +
@@ -169,7 +169,7 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
   if (text !== "1" && text !== "2" && text !== "3" && text !== "4") {
     return sendMessage(
-      "Hola 👋\n\n" +
+      "¡Hola! Bienvenido(a) a *Kerbo Odontología*👋\n\n" +
       "¿Qué deseas hacer?\n\n" +
       "1️⃣ Agendar cita\n" +
       "2️⃣ Cancelar cita\n" +
@@ -344,6 +344,7 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
     let response =
       "📅 Tu próxima cita:\n\n" +
+      `👤 Paciente: ${nextAppointment.patientName}\n` +
       `🦷 Servicio: ${nextAppointment.service.name}\n` +
       `📆 Fecha: ${formattedDate}\n` +
       `⏰ Hora: ${formattedTime}`;
@@ -491,11 +492,12 @@ async function handleServiceSelection({ text, clinic, conversation, sendMessage 
   }
 
   await updateConversation(conversation.id, {
-    state: "WAITING_NAME",
+    state: "WAITING_NAME", // ✅ Estado correcto
     context: {
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       durationMin: selectedService.durationMin
+      // ✅ Sin patientName aquí — se captura en el siguiente paso
     }
   });
 
@@ -503,7 +505,6 @@ async function handleServiceSelection({ text, clinic, conversation, sendMessage 
     appendMainMenuOption(
       `Perfecto ✅\n\nHas elegido: *${selectedService.name}*\n\n` +
       `¿A nombre de quién agendamos la cita?`
-
     )
   );
 }
@@ -534,7 +535,7 @@ async function handleNameCollection({ text, conversation, sendMessage }) {
     state: "WAITING_DATE",
     context: {
       ...conversation.context,
-      patientName: name // 👈 Nombre capturado del usuario
+      patientName: capitalizeName(name) // ✅ Aquí sí existe `name`
     }
   });
 
@@ -656,8 +657,16 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
 
     const formattedTime = `${hour}:${minute} ${ampm}`;
 
+    const rawName = conversation.context.patientName
+                 || conversation.patientName
+                 || "Paciente";
+
+    const confirmedName = capitalizeName(rawName);
+
+
     return sendMessage(
       `✅ *Cita confirmada*\n\n` +
+      `👤 Paciente: ${confirmedName}\n` +
       `🦷 Servicio: ${serviceName}\n` +
       `📅 Fecha: ${formattedDate}\n` +
       `⏰ Hora: ${formattedTime}\n\n` +
@@ -1238,6 +1247,15 @@ async function handleOtherAppointmentAction({ text, clinic, conversation, sendMe
     "2️⃣ Reprogramar esta cita\n" +
     "0️⃣ Volver al menú principal"
   );
+}
+
+function capitalizeName(name) {
+  return name
+    .trim()
+    .toLowerCase()
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 module.exports = {

@@ -1,4 +1,8 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
+console.log("🔑 ENV CHECK:", {
+  WEBHOOK_VERIFY_TOKEN: process.env.VERIFY_TOKEN,
+  DEMO_PHONE_NUMBER_ID: process.env.DEMO_PHONE_NUMBER_ID,
+});
 console.log("🚀 SERVER STARTED");
 console.log("META_APP_ID:", process.env.META_APP_ID);
 console.log("META_APP_SECRET length:", process.env.META_APP_SECRET?.length);
@@ -28,6 +32,8 @@ const allowedOrigins = [
   "https://kerbo.co",
   "https://whatsapp-admin-dashboard-git-main-diazans-projects.vercel.app"
 ];
+
+
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -90,6 +96,10 @@ app.get("/", (req, res) => {
 });
 app.use("/admin", require("./routes/admin.routes"));
 const PORT = 4000;
+
+// Inicializar notificaciones clínicas (con manejo de error)
+require('./services/clinicNotificationService');
+
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);

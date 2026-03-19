@@ -102,6 +102,60 @@ const getAvailableSlotsForDay = async ({
   return suggestions;
 };
 
+const validateClinicSchedule = async (clinicId, startDate, endDate) => {
+
+  const clinic = await prisma.clinic.findUnique({
+    where: { id: clinicId }
+  });
+
+  if (!clinic) throw new Error("Clinic not found");
+
+  const startDateTime = DateTime.fromJSDate(startDate)
+    .setZone(clinic.timeZone);
+
+  const dayOfWeek = startDateTime.weekday % 7;
+
+  const schedule = await prisma.clinicSchedule.findUnique({
+    where: {
+      clinicId_dayOfWeek: {
+        clinicId,
+        dayOfWeek
+      }
+    }
+  });
+
+  // ✅ Verifica que la clínica atiende ese día
+  if (!schedule || !schedule.isActive) {
+    throw new Error("La clínica no atiende ese día");
+  }
+
+  const [openHour, openMinute] = schedule.openTime.split(":").map(Number);
+  const [closeHour, closeMinute] = schedule.closeTime.split(":").map(Number);
+
+  const openDateTime = startDateTime.set({
+    hour: openHour,
+    minute: openMinute,
+    second: 0,
+    millisecond: 0
+  });
+
+  const closeDateTime = startDateTime.set({
+    hour: closeHour,
+    minute: closeMinute,
+    second: 0,
+    millisecond: 0
+  });
+
+  const endDateTime = DateTime.fromJSDate(endDate)
+    .setZone(clinic.timeZone);
+
+  // ✅ Verifica que la cita está dentro del horario
+  if (startDateTime < openDateTime || endDateTime > closeDateTime) {
+    throw new Error("Fuera del horario de atención");
+  }
+};
+
 module.exports = {
-  getAvailableSlotsForDay
+  getAvailableSlotsForDay,
+  validateClinicSchedule
 };
