@@ -47,10 +47,10 @@ const processReminders = async () => {
 
       const message = `👋 Hola ${appointment.patientName}, te recordamos tu cita de *${service.name}* el ${formattedDate} a las ${formattedTime}.
 
-        Responde con el número de la opción:
+      Responde con el número de la opción:
 
-        1️⃣ Confirmar asistencia
-        2️⃣ Cancelar cita`;
+      1️⃣ Confirmar asistencia
+      2️⃣ Cancelar cita`;
       const result = await sendWhatsAppMessage({
         accessToken: clinic.accessToken,
         phoneNumberId: clinic.phoneNumberId,
