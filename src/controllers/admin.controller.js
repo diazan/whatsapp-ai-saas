@@ -156,9 +156,13 @@ const sendSalesMeetLink = async (req, res) => {
       });
     }
 
-    // Verificar que el prospecto pertenece a esta clínica
+    // Verificar demo (ventas puede buscar por ID sin importar clinicId)
+    const isSalesUser = clinic.email === 'sales@demo.com';
+
     const demo = await prisma.salesDemoRequest.findFirst({
-      where: { id, clinicId: clinic.id }
+      where: isSalesUser
+        ? { id }                       // ventas: buscar solo por id
+        : { id, clinicId: clinic.id }  // clínicas normales: aislamiento por tenant
     });
 
     if (!demo) {
@@ -171,8 +175,8 @@ const sendSalesMeetLink = async (req, res) => {
     const message = meetLink;
 
     // 🎯 USAR PHONENUMBERID REAL PARA USUARIO DE VENTAS
-    const sendingPhoneNumberId = clinic.email === 'sales@demo.com' 
-      ? '993943513813000'  // PhoneNumberId real para envío
+    const sendingPhoneNumberId = isSalesUser
+      ? "993943513813000"
       : clinic.phoneNumberId;
 
     console.log("🔧 SALES DEBUG:", {
@@ -247,16 +251,28 @@ const changeSalesDemoStatus = async (req, res) => {
       });
     }
 
-    const demo = await prisma.salesDemoRequest.findFirst({
-      where: { id, clinicId: clinic.id }
-    });
+// Normalizar email para evitar fallos por mayúsculas/espacios
+const isSalesUser = (clinic?.email || "").trim().toLowerCase() === "sales@demo.com";
 
-    if (!demo) {
-      return res.status(404).json({
-        success: false,
-        message: "Demo not found"
-      });
-    }
+// Buscar por ID (ID es globalmente único)
+const demo = await prisma.salesDemoRequest.findUnique({
+  where: { id }
+});
+
+if (!demo) {
+  return res.status(404).json({
+    success: false,
+    message: "Demo request not found"
+  });
+}
+
+// Seguridad multi-tenant: si NO es ventas, debe pertenecer a la clínica
+if (!isSalesUser && demo.clinicId !== clinic.id) {
+  return res.status(404).json({
+    success: false,
+    message: "Demo request not found"
+  });
+}
 
     const updated = await prisma.salesDemoRequest.update({
       where: { id },

@@ -63,15 +63,13 @@ const handleWebhook = async (req, res) => {
 
     console.log("📩 Incoming message:", incomingText);
 
-    console.log("📍 About to call getClinicByPhoneNumberId");
-    console.log("📍 phoneNumberId being sent:", phoneNumberId);
-    console.log("📍 typeof phoneNumberId:", typeof phoneNumberId);
+    
+    
+    
 
     const clinic = await getClinicByPhoneNumberId(phoneNumberId);
 
-    console.log("🧪 clinic.phoneNumberId:", clinic.phoneNumberId);
-    console.log("🧪 DEMO_PHONE_NUMBER_ID:", process.env.DEMO_PHONE_NUMBER_ID);
-    console.log("🧪 equal?:", clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID);
+
 
     if (!clinic) {
       console.log("Clinic not found for phoneNumberId:", phoneNumberId);
