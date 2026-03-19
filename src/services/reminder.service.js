@@ -45,12 +45,14 @@ const processReminders = async () => {
       const formattedDate = localStart.toFormat("cccc dd 'de' LLLL");
       const formattedTime = localStart.toFormat("hh:mm a");
 
-      const message = `👋 Hola ${appointment.patientName}, te recordamos tu cita de *${service.name}* el ${formattedDate} a las ${formattedTime}.
-
-      Responde con el número de la opción:
-
-      1️⃣ Confirmar asistencia
-      2️⃣ Cancelar cita`;
+      const message = [
+        `👋 Hola ${appointment.patientName}, te recordamos tu cita de *${service.name}* el ${formattedDate} a las ${formattedTime}.`,
+        "",
+        "Responde con el número de la opción:",
+        "",
+        "1️⃣ Confirmar asistencia",
+        "2️⃣ Cancelar cita"
+      ].join("\n");
       const result = await sendWhatsAppMessage({
         accessToken: clinic.accessToken,
         phoneNumberId: clinic.phoneNumberId,
