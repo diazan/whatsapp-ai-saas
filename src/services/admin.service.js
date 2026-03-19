@@ -50,7 +50,9 @@ const getAppointments = async ({
     where.startAt = {};
 
     if (from) {
-      const fromDate = DateTime.fromISO(from, { zone: timeZone })
+      // Fix para años corruptos (0002 → 2026)
+      const correctedFrom = from.replace(/^000?2/, '2026');
+      const fromDate = DateTime.fromISO(correctedFrom, { zone: timeZone })
         .startOf("day")
         .toUTC()
         .toJSDate();
@@ -59,14 +61,16 @@ const getAppointments = async ({
     }
 
     if (to) {
-      const toDate = DateTime.fromISO(to, { zone: timeZone })
+      // Fix para años corruptos (0002 → 2026)  
+      const correctedTo = to.replace(/^000?2/, '2026');
+      const toDate = DateTime.fromISO(correctedTo, { zone: timeZone })
         .endOf("day")
         .toUTC()
         .toJSDate();
 
       where.startAt.lte = toDate;
     }
-  }
+      }
 
   // ✅ Paginación segura (compatible hacia atrás)
   const currentPage =
