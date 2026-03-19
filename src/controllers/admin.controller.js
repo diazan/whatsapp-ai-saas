@@ -175,6 +175,12 @@ const sendSalesMeetLink = async (req, res) => {
       ? '993943513813000'  // PhoneNumberId real para envío
       : clinic.phoneNumberId;
 
+    console.log("🔧 SALES DEBUG:", {
+      clinicEmail: clinic.email,
+      originalPhoneNumberId: clinic.phoneNumberId,
+      sendingPhoneNumberId: sendingPhoneNumberId
+    });
+
     const result = await sendWhatsAppMessage({
       accessToken: clinic.accessToken,
       phoneNumberId: sendingPhoneNumberId,  // ← ARREGLADO
