@@ -34,8 +34,9 @@ function isValidFlowResponse(state, text) {
   const isNumber = /^[1-9]$/.test(text); 
   const isDate = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text);
   const isTime = /^\d{1,2}:\d{2}$/.test(text) ||
-                 /^\d{1,2}(am|pm)$/.test(text) ||
-                 /^\d{1,2}:\d{2}(am|pm)$/.test(text);
+                /^\d{1,2}(am|pm)$/.test(text) ||
+                /^\d{1,2}:\d{2}(am|pm)$/.test(text) ||
+                /^\d{1,2}:\d{2}\s+(am|pm)$/i.test(text);
   const isName = /^[a-záéíóúüñ\s]+$/i.test(text);
 
   // ✅ Validación cruzada por formato — independiente del estado

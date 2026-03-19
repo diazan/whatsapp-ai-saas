@@ -49,14 +49,30 @@ const getAppointments = async ({
   if (from || to) {
     where.startAt = {};
 
+  // ✅ Filtro por rango de fechas
+  if (from || to) {
+    where.startAt = {};
+
     if (from) {
-      const fromDate = DateTime.fromISO(from, { zone: timeZone })
+      // Parsear DD/MM/YYYY correctamente
+      const fromDate = DateTime.fromFormat(from, "dd/MM/yyyy", { zone: timeZone })
         .startOf("day")
         .toUTC()
         .toJSDate();
 
       where.startAt.gte = fromDate;
     }
+
+    if (to) {
+      // Parsear DD/MM/YYYY correctamente  
+      const toDate = DateTime.fromFormat(to, "dd/MM/yyyy", { zone: timeZone })
+        .endOf("day")
+        .toUTC()
+        .toJSDate();
+
+      where.startAt.lte = toDate;
+    }
+  }
 
     if (to) {
       const toDate = DateTime.fromISO(to, { zone: timeZone })
