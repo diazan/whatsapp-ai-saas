@@ -98,6 +98,11 @@ const getAppointments = async ({
     prisma.appointment.count({ where }),
   ]);
 
+  console.log("🔍 BACKEND DEBUG:");
+console.log("where clause:", JSON.stringify(where, null, 2));
+console.log("appointments found:", appointments.length);
+console.log("total count:", total);
+
   // ✅ Métricas de asistencia
   const [attendedCount, noShowCount] = await Promise.all([
     prisma.appointment.count({
