@@ -1,13 +1,14 @@
 const { sendWhatsAppMessage } = require("./whatsappService");
 
 const CLINIC_FLOW_KEYWORDS = [
-  "0", "1", "2", "3", "4",
+  "0", "1", "2", "3", "4", "5", "6",
   "hola", "inicio",
   "cita", "turno", "agendar", "reservar"
 ];
 
 // ✅ Estados del flujo donde el usuario ingresa datos
 const BOOKING_FLOW_STATES = [
+  "WAITING_SUBMENU_CITAS",
   "WAITING_SERVICE",
   "WAITING_NAME",
   "WAITING_DATE",
@@ -18,11 +19,12 @@ const BOOKING_FLOW_STATES = [
   "WAITING_CANCEL_CONFIRMATION",
   "WAITING_RESCHEDULE_SELECTION",
   "WAITING_CANCEL_SELECTION",
-  "WAITING_VIEW_OTHER_APPOINTMENTS"
+  "WAITING_VIEW_OTHER_APPOINTMENTS",
+  "WAITING_ADVISOR_QUESTION"
 ];
 
-//const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
-const COOLDOWN_MS = 15 * 1000;
+  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
+//const COOLDOWN_MS = 15 * 1000;
 
 // Map en memoria: clave = "clinicId:phone"
 // valor = { messages: [], timer }
@@ -68,6 +70,12 @@ function isValidFlowResponse(state, text) {
 
     case "WAITING_VIEW_OTHER_APPOINTMENTS":
       return text === "1";
+
+    case "WAITING_SUBMENU_CITAS":     // ← ya agregado
+      return isNumber;
+
+    case "WAITING_ADVISOR_QUESTION":  // ← agregar esto
+      return true;  
 
     default:
       return false;

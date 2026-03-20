@@ -19,6 +19,10 @@ model Clinic {
   passwordHash        String?
   adminPhone          String?
   notificationsActive Boolean            @default(true)
+  address             String?
+  businessHours       String?
+  promotions          String?
+  showTestimonials    Boolean            @default(true)
   appointments        Appointment[]
   schedules           ClinicSchedule[]
   conversations       Conversation[]

@@ -1,10 +1,58 @@
 const { DateTime } = require("luxon");
 
+// ─────────────────────────────────────────────
+// CONFIGURACIÓN DE LA DEMO
+// ─────────────────────────────────────────────
+
 const DEMO_TTL_MINUTES = 15;
 const demoSessions = new Map();
 
+const DEMO_CLINIC_DATA = {
+  name: "Kerbo Clínica",
+  promotions:
+    "🔥 Este mes: Limpieza dental + valoración GRATIS\n" +
+    "⏳ Cupos limitados — ¡Agenda ya!\n\n" +
+    "💎 Blanqueamiento dental con 30% de descuento",
+  address:
+    "📍 Av. Insurgentes Sur 123, Ciudad de México\n" +
+    "🅿️ Estacionamiento disponible",
+  businessHours:
+    "Lunes a Viernes: 9:00 AM - 7:00 PM\n" +
+    "Sábado: 9:00 AM - 2:00 PM\n" +
+    "Domingo: Cerrado",
+  services: [
+    { name: "Consulta General", duration: "30 min" },
+    { name: "Limpieza Dental", duration: "45 min" },
+    { name: "Ortodoncia", duration: "60 min" },
+    { name: "Blanqueamiento Dental", duration: "90 min" }
+  ],
+  testimonials: [
+    {
+      text: "Agendé mi cita en segundos desde WhatsApp. Increíble.",
+      author: "María G."
+    },
+    {
+      text: "Me recordaron mi cita automáticamente. 10 de 10.",
+      author: "Carlos R."
+    },
+    {
+      text: "La clínica nunca pierde mis datos. Muy profesional.",
+      author: "Laura M."
+    }
+  ]
+};
+
+// ─────────────────────────────────────────────
+// GESTIÓN DE SESIONES EN MEMORIA
+// ─────────────────────────────────────────────
+
 function getKey(clinicId, patientPhone) {
   return `${clinicId}_${patientPhone}`;
+}
+
+// ✅ Banner reutilizable
+function buildDemoBanner() {
+  return `🧪 _(Estás en la demo interactiva — ningún dato es real)_\n\n`;
 }
 
 function createOrRefreshSession(clinicId, patientPhone) {
@@ -47,16 +95,46 @@ function isUserInDemo(clinicId, patientPhone) {
   return true;
 }
 
-function getMenuMessage() {
+// ─────────────────────────────────────────────
+// BUILDERS
+// ─────────────────────────────────────────────
+
+function buildMainMenu() {
   return (
-    "🧪 *DEMO INTERACTIVA KERBO*\n\n" +
-    "1️⃣ Agendar cita\n" +
-    "2️⃣ Ver mi cita\n" +
-    "3️⃣ Reprogramar cita\n" +
-    "4️⃣ Cancelar cita\n" +
-    "5️⃣ Salir demo"
+    `✨ *Bienvenido a la Demo Interactiva*\n\n` +
+    `Soy el asistente virtual de *${DEMO_CLINIC_DATA.name}* 🦷\n\n` +
+    `Esto es lo que puedo hacer por tu negocio:\n\n` +
+    `1️⃣ 📅 Agendar cita\n` +
+    `2️⃣ 🦷 Ver servicios\n` +
+    `3️⃣ 🔥 Promociones activas\n` +
+    `4️⃣ ⭐ Testimonios de pacientes\n` +
+    `5️⃣ 📍 Ubicación y horarios\n` +
+    `6️⃣ 💬 Hablar con asesor\n` +
+    `7️⃣ 🚪 Salir de la demo\n\n` +
+    `✨ Todo esto automatizado para tu negocio`
   );
 }
+
+function buildClosingMessage() {
+  return (
+    `🚀 *¿Te gustó la experiencia?*\n\n` +
+    `Esto es exactamente lo que verían tus pacientes.\n\n` +
+    `✅ Configurado para tu negocio\n` +
+    `✅ Listo en menos de 24 horas\n` +
+    `✅ Sin conocimientos técnicos\n\n` +
+    `¿Hablamos?\n\n` +
+    `1️⃣ Agendar demo personalizada\n` +
+    `2️⃣ Volver al inicio de la demo`
+  );
+}
+
+function appendMenuOption(text) {
+  return `${text}\n\n0️⃣ Volver al menú`;
+}
+
+// ─────────────────────────────────────────────
+// HANDLER PRINCIPAL
+// ─────────────────────────────────────────────
 
 async function handleDemoMessage({
   clinic,
@@ -67,188 +145,347 @@ async function handleDemoMessage({
   const text = message.toLowerCase().trim();
   const session = createOrRefreshSession(clinic.id, patientPhone);
 
-  // 🔹 Inicio forzado desde Sales Bot
+  // ✅ Inicio forzado desde Sales Bot
   if (message === "__start__") {
     session.step = "MENU";
-    return sendMessage(getMenuMessage());
+    return sendMessage(buildMainMenu());
+  }
+
+  // ✅ Escape global al menú
+  if (text === "0" && session.step !== "CLOSING") {
+    session.step = "MENU";
+    return sendMessage(buildMainMenu());
   }
 
   switch (session.step) {
 
+    // ─────────────────────────────────────────
     case "MENU":
+    // ─────────────────────────────────────────
 
       if (text === "1") {
         session.step = "ASK_DATE";
         return sendMessage(
-          "📅 Ingresa una fecha para tu cita demo.\n" +
-          "Formato: DD/MM/AAAA\n\n" +
-          "0️⃣ Volver al menú"
+          appendMenuOption(
+            buildDemoBanner() +
+            `📅 *Agendar cita en ${DEMO_CLINIC_DATA.name}*\n\n` +
+            `¿Para qué fecha deseas la cita?\n` +
+            `Formato: DD/MM/AAAA`
+          )
         );
       }
 
       if (text === "2") {
-        if (!session.appointment) {
-            return sendMessage(
-            "No tienes ninguna cita agendada en esta demo.\n\n" +
-            getMenuMessage()
-            );
-        }
+        let response = `🦷 *Nuestros servicios*\n\n`;
 
-        const date = DateTime.fromISO(session.appointment.startAtISO, {
-          zone: clinic.timeZone
+        DEMO_CLINIC_DATA.services.forEach((service) => {
+          response += `• ${service.name} (${service.duration})\n`;
         });
 
-        return sendMessage(
-        "📋 *Tu cita demo*\n\n" +
-        `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
-        `⏰ ${date.toFormat("hh:mm a")}\n\n` +
-        getMenuMessage()
-        );
+        response += `\n¿Te gustaría agendar alguno?`;
+
+        return sendMessage(appendMenuOption(response));
       }
 
       if (text === "3") {
-        if (!session.appointment) {
-            return sendMessage(
-            "Primero debes agendar una cita.\n\n" +
-            getMenuMessage()
-            );
-        }
-
-        session.step = "ASK_DATE";
         return sendMessage(
-          "📅 Ingresa la nueva fecha.\nFormato: DD/MM/AAAA\n\n0️⃣ Volver al menú"
+          appendMenuOption(
+            buildDemoBanner() +
+            `🔥 *Promociones activas*\n\n` +
+            DEMO_CLINIC_DATA.promotions
+          )
         );
       }
 
       if (text === "4") {
-        if (!session.appointment) {
-          return sendMessage(
-            "No tienes ninguna cita para cancelar.\n\n0️⃣ Volver al menú"
-          );
-        }
+        let response = `⭐ *Testimonios de nuestros pacientes*\n\n`;
 
-        session.appointment = null;
+        DEMO_CLINIC_DATA.testimonials.forEach((t) => {
+          response += `💬 _"${t.text}"_\n`;
+          response += `— ${t.author}\n\n`;
+        });
 
-        return sendMessage(
-        "✅ Tu cita demo ha sido cancelada.\n\n" +
-        getMenuMessage()
-        );
+        response += `¿Listo para tu cita?`;
+
+        return sendMessage(appendMenuOption(response));
       }
 
       if (text === "5") {
-        destroySession(clinic.id, patientPhone);
-
         return sendMessage(
-          "Has salido de la demo interactiva.\n\n" +
-          "Escribe 1 si deseas agendar una demo personalizada con nuestro equipo."
+          appendMenuOption(
+            `📍 *Ubicación y horarios*\n\n` +
+            `${DEMO_CLINIC_DATA.address}\n\n` +
+            `🕐 *Horarios de atención*\n` +
+            DEMO_CLINIC_DATA.businessHours
+          )
         );
       }
 
-      return sendMessage("Elige una opción válida.");
-
-    case "ASK_DATE":
-
-      if (text === "0") {
-        session.step = "MENU";
-        return sendMessage(getMenuMessage());
+      if (text === "6") {
+        session.step = "CLOSING";
+        return sendMessage(
+          `💬 *Hablar con un asesor*\n\n` +
+          `En tu versión real, aquí tus pacientes podrían\n` +
+          `escribirte directamente y recibirías una\n` +
+          `notificación al instante en tu celular 📱\n\n` +
+          buildClosingMessage()
+        );
       }
 
-      // ✅ Validación robusta con Luxon
+      if (text === "7") {
+        destroySession(clinic.id, patientPhone);
+        session.step = "CLOSING";
+        return sendMessage(buildClosingMessage());
+      }
+
+      return sendMessage(buildMainMenu());
+
+    // ─────────────────────────────────────────
+    case "ASK_DATE":
+    // ─────────────────────────────────────────
+
       const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
-        zone: clinic.timeZone
+        zone: "America/Mexico_City"
       });
 
       if (!dateObj.isValid) {
-        return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
+        return sendMessage(
+          appendMenuOption(
+            "Fecha inválida.\nUsa formato DD/MM/AAAA\n\n" +
+            "Ejemplo: 25/03/2026"
+          )
+        );
       }
 
       const today = DateTime.now()
-        .setZone(clinic.timeZone)
+        .setZone("America/Mexico_City")
         .startOf("day");
 
       if (dateObj < today) {
-        return sendMessage("No puedes agendar una fecha pasada.");
+        return sendMessage(
+          appendMenuOption(
+            "No puedes agendar una fecha pasada.\n" +
+            "Por favor elige otra fecha."
+          )
+        );
       }
 
       session.tempDateISO = dateObj.toFormat("yyyy-MM-dd");
+      session.step = "ASK_SERVICE";
+
+      let serviceMenu = buildDemoBanner() +
+        `🦷 *¿Qué servicio deseas agendar?*\n\n`;
+
+      DEMO_CLINIC_DATA.services.forEach((service, index) => {
+        serviceMenu += `${index + 1}️⃣ ${service.name} (${service.duration})\n`;
+      });
+
+      return sendMessage(appendMenuOption(serviceMenu));
+
+    // ─────────────────────────────────────────
+    case "ASK_SERVICE":
+    // ─────────────────────────────────────────
+
+      const serviceIndex = parseInt(text, 10);
+
+      if (
+        isNaN(serviceIndex) ||
+        serviceIndex < 1 ||
+        serviceIndex > DEMO_CLINIC_DATA.services.length
+      ) {
+        let serviceMenu = `Por favor elige un número válido:\n\n`;
+
+        DEMO_CLINIC_DATA.services.forEach((service, index) => {
+          serviceMenu += `${index + 1}️⃣ ${service.name}\n`;
+        });
+
+        return sendMessage(appendMenuOption(serviceMenu));
+      }
+
+      session.selectedService = DEMO_CLINIC_DATA.services[serviceIndex - 1];
+      session.step = "ASK_NAME";
+
+      return sendMessage(
+        appendMenuOption(
+          buildDemoBanner() +
+          `Perfecto ✅\n\n` +
+          `Has elegido: *${session.selectedService.name}*\n\n` +
+          `¿A nombre de quién agendamos la cita?`
+        )
+      );
+
+    // ─────────────────────────────────────────
+    case "ASK_NAME":
+    // ─────────────────────────────────────────
+
+      const name = text.trim();
+
+      if (!name || name.length < 2) {
+        return sendMessage(
+          appendMenuOption("Por favor ingresa un nombre válido.")
+        );
+      }
+
+      if (name.length > 100) {
+        return sendMessage(
+          appendMenuOption("El nombre es demasiado largo. Intenta nuevamente.")
+        );
+      }
+
+      session.patientName = name
+        .trim()
+        .toLowerCase()
+        .split(" ")
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+
       session.step = "ASK_TIME";
 
       return sendMessage(
-        "⏰ Ingresa la hora en formato HH:mm\n" +
-        "Ejemplo: 14:30\n\n0️⃣ Volver al menú"
+        appendMenuOption(
+          buildDemoBanner() +
+          `Gracias 😊\n\n` +
+          `¿A qué hora deseas la cita?\n\n` +
+          `Puedes escribir por ejemplo:\n` +
+          `• 14:30\n` +
+          `• 3pm\n` +
+          `• 3:30pm`
+        )
       );
 
-        case "ASK_TIME":
+    // ─────────────────────────────────────────
+    case "ASK_TIME":
+    // ─────────────────────────────────────────
 
-        if (text === "0") {
-            session.step = "MENU";
-            return sendMessage(getMenuMessage());
-        }
+      const parsedTime = parseTime(text);
 
-        // ✅ Intentar parsear 24h primero (HH:mm)
-        let parsedTime = null;
-
-        const time24Regex = /^([0-1]?\d|2[0-3]):([0-5]\d)$/;
-        const match24 = text.match(time24Regex);
-
-        if (match24) {
-            const hour = match24[1].padStart(2, "0");
-            const minute = match24[2];
-            parsedTime = `${hour}:${minute}`;
-        }
-
-        // ✅ Intentar parsear formato 12h (am/pm)
-        if (!parsedTime) {
-            const cleaned = text.replace(/\s+/g, "").toLowerCase();
-            const time12Regex = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/;
-            const match12 = cleaned.match(time12Regex);
-
-            if (match12) {
-            let hour = parseInt(match12[1], 10);
-            const minute = match12[2] || "00";
-            const period = match12[3];
-
-            if (hour >= 1 && hour <= 12) {
-                if (period === "pm" && hour !== 12) hour += 12;
-                if (period === "am" && hour === 12) hour = 0;
-
-                parsedTime = `${hour.toString().padStart(2, "0")}:${minute}`;
-            }
-            }
-        }
-
-        if (!parsedTime) {
-            return sendMessage(
+      if (!parsedTime) {
+        return sendMessage(
+          appendMenuOption(
             "Hora inválida.\n\nPuedes escribir:\n" +
             "• 14:30\n" +
-            "• 2:30pm\n" +
-            "• 2 pm\n\n" +
-            "0️⃣ Volver al menú"
-            );
-        }
-
-        const startAtISO = `${session.tempDateISO}T${parsedTime}:00`;
-
-        session.appointment = { startAtISO };
-        session.step = "MENU";
-
-        const confirmedDate = DateTime.fromISO(startAtISO, {
-            zone: clinic.timeZone
-        });
-
-        return sendMessage(
-            "✅ *Cita demo confirmada*\n\n" +
-            `📅 ${confirmedDate.toFormat("dd/MM/yyyy")}\n` +
-            `⏰ ${confirmedDate.toFormat("hh:mm a")}\n\n` +
-            "Así funciona el sistema real con tus pacientes.\n\n" +
-            getMenuMessage()
+            "• 3pm\n" +
+            "• 3:30pm"
+          )
         );
+      }
 
+      const startAtISO = `${session.tempDateISO}T${parsedTime}:00`;
+
+      const confirmedDate = DateTime.fromISO(startAtISO, {
+        zone: "America/Mexico_City"
+      });
+
+      // ✅ Guardar cita en sesión
+      session.appointment = {
+        startAtISO,
+        serviceName: session.selectedService.name,
+        patientName: session.patientName
+      };
+
+      session.step = "CLOSING";
+
+      return sendMessage(
+        buildDemoBanner() + 
+        `✅ *Cita confirmada*\n\n` +
+        `👤 Paciente: ${session.patientName}\n` +
+        `🦷 Servicio: ${session.selectedService.name}\n` +
+        `📅 Fecha: ${confirmedDate.toFormat("dd/MM/yyyy")}\n` +
+        `⏰ Hora: ${confirmedDate.toFormat("hh:mm a")}\n\n` +
+        `Así de fácil agenda un paciente real 🙌\n\n` +
+        buildClosingMessage()
+      );
+
+    // ─────────────────────────────────────────
+    case "CLOSING":
+    // ─────────────────────────────────────────
+
+    if (text === "1") {
+      destroySession(clinic.id, patientPhone);
+
+      // ✅ Ir directo a BOOKING_DATE del flujo de ventas
+      const {
+        getOrCreateConversation,
+        updateConversation
+      } = require("./conversation.service");
+
+      const conversation = await getOrCreateConversation({
+        clinicId: clinic.id,
+        patientPhone,
+        patientName: null
+      });
+
+      await updateConversation(conversation.id, {
+        state: "SALES_BOOKING_DATE",
+        context: {}
+      });
+
+      return sendMessage(
+        `¡Excelente decisión! 🚀\n\n` +
+        `Vamos a agendar tu demo personalizada.\n\n` +
+        `📅 ¿Para qué fecha la agendamos?\n` +
+        `Formato: DD/MM/AAAA\n\n` +
+        `0️⃣ Volver al inicio`
+      );
+    }
+
+      // ✅ Volver al inicio de la demo
+      if (text === "2") {
+        session.step = "MENU";
+        session.appointment = null;
+        session.tempDateISO = null;
+        session.selectedService = null;
+        session.patientName = null;
+        return sendMessage(buildMainMenu());
+      }
+
+      return sendMessage(buildClosingMessage());
+
+    // ─────────────────────────────────────────
     default:
+    // ─────────────────────────────────────────
       session.step = "MENU";
-      return sendMessage(getMenuMessage());
+      return sendMessage(buildMainMenu());
   }
 }
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+
+function parseTime(text) {
+  const cleaned = text.toLowerCase().replace(/\s/g, "");
+
+  const regex24 = /^([0-1]?\d|2[0-3]):([0-5]\d)$/;
+  const match24 = cleaned.match(regex24);
+
+  if (match24) {
+    const hour = match24[1].padStart(2, "0");
+    const minute = match24[2];
+    return `${hour}:${minute}`;
+  }
+
+  const regexAmPm = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/;
+  const matchAmPm = cleaned.match(regexAmPm);
+
+  if (matchAmPm) {
+    let hour = parseInt(matchAmPm[1], 10);
+    const minute = matchAmPm[2] || "00";
+    const period = matchAmPm[3];
+
+    if (hour < 1 || hour > 12) return null;
+    if (period === "pm" && hour !== 12) hour += 12;
+    if (period === "am" && hour === 12) hour = 0;
+
+    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  }
+
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// EXPORTS
+// ─────────────────────────────────────────────
 
 module.exports = {
   handleDemoMessage,

@@ -4,7 +4,7 @@ const {
   getReminderWindowAppointment
 } = require("../services/bookingService");
 const { evaluateClinicNotification } = require("../services/clinicNotificationService");
-
+const { evaluateSalesNotification } = require("../services/salesNotificationService");
 const prisma = require("../lib/prisma");
 
 const processedMessages = new Set();
@@ -146,9 +146,18 @@ const handleWebhook = async (req, res) => {
     const { handleSalesBotMessage } = require("../services/salesBot.service");
 
 
-if (process.env.DEMO_PHONE_NUMBER_ID && 
-    clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID) {
-      return handleSalesBotMessage({
+    if (process.env.DEMO_PHONE_NUMBER_ID && 
+        clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID) {
+
+        const salesConversation = await prisma.conversation.findFirst({
+        where: {
+          clinicId: clinic.id,
+          patientPhone: from,
+          active: true
+        }
+      });
+
+      await handleSalesBotMessage({
         clinic,
         message: incomingText,
         patientPhone: from,
@@ -161,6 +170,15 @@ if (process.env.DEMO_PHONE_NUMBER_ID &&
           });
         }
       });
+
+      await evaluateSalesNotification({
+        phone: from,
+        clinic,
+        incomingMessage: incomingText,
+        conversationState: salesConversation?.state ?? "SALES_IDLE"
+      });
+
+      return;
     }
 
     // ✅ Leer estado ANTES con prisma directo

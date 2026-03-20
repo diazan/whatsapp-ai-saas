@@ -27,6 +27,7 @@ const SALES_STATES = {
   PROBLEM_HOOK: "SALES_PROBLEM_HOOK",
   ASK_VOLUME: "SALES_ASK_VOLUME",
   SHOW_RESULT: "SALES_SHOW_RESULT",
+  MORE_INFO: "SALES_MORE_INFO",      // ✅ estado propio para "Más información"
   BOOKING_DATE: "SALES_BOOKING_DATE",
   BOOKING_TIME: "SALES_BOOKING_TIME",
   CUSTOM_TIME: "SALES_CUSTOM_TIME",
@@ -53,7 +54,6 @@ async function getDemoServiceId(clinicId) {
       active: true
     }
   });
-
   return service ? service.id : null;
 }
 
@@ -78,7 +78,6 @@ function parseTime(text) {
     const period = matchAmPm[3];
 
     if (hour < 1 || hour > 12) return null;
-
     if (period === "pm" && hour !== 12) hour += 12;
     if (period === "am" && hour === 12) hour = 0;
 
@@ -87,6 +86,30 @@ function parseTime(text) {
 
   return null;
 }
+
+// ─────────────────────────────────────────────
+// BUILDER — SHOW_RESULT
+// ─────────────────────────────────────────────
+
+function buildShowResult(volume) {
+  const lost = Math.floor(volume * ESTIMATED_NO_SHOW_RATE);
+  const recoverable = Math.floor(lost * RECOVERY_RATE);
+
+  return (
+    `Con aproximadamente ${volume} citas al mes,\n\n` +
+    `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
+    `📈 *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
+    `¿Te gustaría agendar una demo personalizada?\n\n` +
+    `1️⃣ Sí, agendar demo\n` +
+    `2️⃣ Más información\n` +
+    `3️⃣ Probar cómo funciona\n\n` +
+    `0️⃣ Volver al inicio`
+  );
+}
+
+// ─────────────────────────────────────────────
+// HANDLER PRINCIPAL
+// ─────────────────────────────────────────────
 
 const handleSalesBotMessage = async ({
   clinic,
@@ -112,7 +135,7 @@ const handleSalesBotMessage = async ({
     patientName: null
   });
 
-  // ✅ Si ya tiene demo agendada → silencio total + notificar admin
+  // ✅ Si ya tiene demo agendada
   const existingDemo = await prisma.salesDemoRequest.findFirst({
     where: {
       clinicId: clinic.id,
@@ -123,7 +146,6 @@ const handleSalesBotMessage = async ({
 
   if (existingDemo) {
 
-    // ✅ Permitir reinicio del flujo
     if (text === "inicio" || text === "hola") {
       await updateConversation(conversation.id, {
         state: SALES_STATES.RETURNING,
@@ -138,11 +160,11 @@ const handleSalesBotMessage = async ({
       );
     }
 
-    // ✅ Si la conversación está activa en el flujo, dejar pasar al switch
     const activeStates = [
       SALES_STATES.PROBLEM_HOOK,
       SALES_STATES.ASK_VOLUME,
       SALES_STATES.SHOW_RESULT,
+      SALES_STATES.MORE_INFO,        // ✅ agregado
       SALES_STATES.BOOKING_DATE,
       SALES_STATES.BOOKING_TIME,
       SALES_STATES.CUSTOM_TIME,
@@ -153,7 +175,6 @@ const handleSalesBotMessage = async ({
     if (activeStates.includes(conversation.state)) {
       // Dejar pasar al switch normalmente
     } else {
-      // ✅ Fuera del flujo → silencio + notificar admin
       evaluateSalesNotification({
         phone: patientPhone,
         clinic,
@@ -161,28 +182,46 @@ const handleSalesBotMessage = async ({
       }).catch(err => {
         console.error("[salesNotification] Error silencioso:", err.message);
       });
-
       return;
     }
   }
 
   console.log("[salesBot] Estado conversación:", conversation.state);
 
-  // ✅ Escape global al inicio
-if (text === "0") {
+  // ─────────────────────────────────────────
+  // ESCAPE GLOBAL "0"
+  // ─────────────────────────────────────────
 
-  await updateConversation(conversation.id, {
-    state: SALES_STATES.PROBLEM_HOOK,
-    context: {}
-  });
+  if (text === "0") {
 
-  return sendMessage(
-    "👋 Volvemos al inicio.\n\n" +
-    "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
-    "¿Quieres ver cómo funciona?\n\n" +
-    "1️⃣ Sí, muéstrame"
-  );
-}
+    // ✅ SOLO desde MORE_INFO → volver a SHOW_RESULT
+    if (conversation.state === SALES_STATES.MORE_INFO) {
+      const ctx = conversation.context;
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.SHOW_RESULT
+      });
+
+      return sendMessage(buildShowResult(ctx.estimatedVolume));
+    }
+
+    // ✅ Todos los demás estados → ir al inicio
+    await updateConversation(conversation.id, {
+      state: SALES_STATES.PROBLEM_HOOK,
+      context: {}
+    });
+
+    return sendMessage(
+      "👋 Volvemos al inicio.\n\n" +
+      "La mayoría de negocios con agenda pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
+      "¿Quieres ver cómo funciona?\n\n" +
+      "1️⃣ Sí, muéstrame"
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // EXPIRACIÓN Y SALUDO
+  // ─────────────────────────────────────────
 
   if (conversation.expired) {
     await updateConversation(conversation.id, {
@@ -203,12 +242,16 @@ if (text === "0") {
 
     return sendMessage(
       "👋 Hola. ¡Gracias por comunicarte con *Kerbo*!\n\n" +
-      "La mayoría de clínicas pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
+      "La mayoría de negocios con agenda pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
       "*Kerbo-flow* ayuda a reducir eso automáticamente con confirmaciones y recordatorios por WhatsApp.\n\n" +
       "¿Quieres ver cómo funciona en tu clínica?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
   }
+
+  // ─────────────────────────────────────────
+  // SWITCH PRINCIPAL
+  // ─────────────────────────────────────────
 
   switch (conversation.state) {
 
@@ -235,27 +278,14 @@ if (text === "0") {
       const volume = getVolumeFromOption(text);
       if (!volume) return sendMessage("Por favor elige una opción válida.");
 
-      const lost = Math.floor(volume * ESTIMATED_NO_SHOW_RATE);
-      const recoverable = Math.floor(lost * RECOVERY_RATE);
-
       await updateConversation(conversation.id, {
         state: SALES_STATES.SHOW_RESULT,
         context: {
-          estimatedVolume: volume,
-          estimatedRecovery: recoverable
+          estimatedVolume: volume
         }
       });
 
-      return sendMessage(
-        `Con aproximadamente ${volume} citas al mes,\n\n` +
-        `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
-        `📈 Kerbo puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
-        "¿Te gustaría agendar una demo personalizada?\n\n" +
-        "1️⃣ Sí, agendar demo\n" +
-        "2️⃣ Más información\n" +
-        "3️⃣ Probar cómo funciona\n\n" +
-        "0️⃣ Volver al inicio"
-      );
+      return sendMessage(buildShowResult(volume));
     }
 
     case SALES_STATES.SHOW_RESULT:
@@ -265,18 +295,25 @@ if (text === "0") {
           state: SALES_STATES.BOOKING_DATE
         });
 
-        return sendMessage("¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver al inicio");
+        return sendMessage(
+          "¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver al inicio"
+        );
       }
 
+      // ✅ Más información → estado propio MORE_INFO
       if (text === "2") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.MORE_INFO
+        });
+
         return sendMessage(
           "Nuestro sistema incluye:\n\n" +
           "✅ Agendamiento automático por WhatsApp\n" +
-          "✅ Confirmaciones y recordatorios automáticos\n" +
-          "✅ Cancelación y reprogramación sin intervención humana\n" +
+          "✅ Confirmaciones y recordatorios sin intervención humana\n" +
+          "✅ Reprogramaciones en un solo click\n" +
+          "✅ Reducción del tiempo operativo del personal\n" +
           "✅ Panel con métricas reales de ocupación\n\n" +
-          "Escribe 1 cuando quieras agendar tu demo.\n\n" +
-          "0️⃣ Volver al inicio"
+          "0️⃣ Volver atrás"
         );
       }
 
@@ -291,109 +328,97 @@ if (text === "0") {
 
       return sendMessage("Elige una opción válida.");
 
-    case SALES_STATES.BOOKING_DATE: {
+    // ✅ Estado propio para "Más información"
+    case SALES_STATES.MORE_INFO:
 
-    if (text === "0") {
+      // El "0" ya está manejado por el escape global
+      // Cualquier otro texto → volver a SHOW_RESULT
       await updateConversation(conversation.id, {
         state: SALES_STATES.SHOW_RESULT
       });
-      return sendMessage("1️⃣ Agendar demo\n2️⃣ Más info\n3️⃣ Probar demo");
-    }
 
-    const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
-      zone: clinic.timeZone
-    });
-
-    if (!dateObj.isValid) {
-      return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
-    }
-
-    const selectedDateISO = dateObj.toFormat("yyyy-MM-dd");
-    const todayISO = DateTime.now()
-      .setZone(clinic.timeZone)
-      .toFormat("yyyy-MM-dd");
-
-    if (selectedDateISO < todayISO) {
-      return sendMessage("No puedes agendar fecha pasada.");
-    }
-
-    // ✅ Guardar fecha en contexto SIN serviceId
-    await updateConversation(conversation.id, {
-      state: SALES_STATES.BOOKING_TIME,
-      context: { dateISO: selectedDateISO }
-    });
-
-    return sendMessage(
-      "⏰ ¿Qué hora te queda mejor?\n\n" +
-      "Puedes escribir por ejemplo:\n" +
-      "• 14:30\n" +
-      "• 3pm\n\n" +
-      "0️⃣ Volver atrás"
-    );
-  }
-
-  case SALES_STATES.BOOKING_TIME: {
-
-    if (text === "0") {
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.BOOKING_DATE
-      });
-      return sendMessage("Ingresa fecha DD/MM/AAAA");
-    }
-
-    const manualTime = parseTimeInput(text);
-
-    if (!manualTime) {
       return sendMessage(
-        "Hora inválida.\n\n" +
+        buildShowResult(conversation.context.estimatedVolume)
+      );
+
+    case SALES_STATES.BOOKING_DATE: {
+
+      const dateObj = DateTime.fromFormat(text, "dd/MM/yyyy", {
+        zone: clinic.timeZone
+      });
+
+      if (!dateObj.isValid) {
+        return sendMessage("Fecha inválida. Usa formato DD/MM/AAAA");
+      }
+
+      const selectedDateISO = dateObj.toFormat("yyyy-MM-dd");
+      const todayISO = DateTime.now()
+        .setZone(clinic.timeZone)
+        .toFormat("yyyy-MM-dd");
+
+      if (selectedDateISO < todayISO) {
+        return sendMessage("No puedes agendar fecha pasada.");
+      }
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.BOOKING_TIME,
+        context: {
+          ...conversation.context,
+          dateISO: selectedDateISO
+        }
+      });
+
+      return sendMessage(
+        "⏰ ¿Qué hora te queda mejor?\n\n" +
         "Puedes escribir por ejemplo:\n" +
         "• 14:30\n" +
-        "• 3pm\n" +
-        "• 3:30pm\n\n" +
+        "• 3pm\n\n" +
         "0️⃣ Volver atrás"
       );
     }
 
-    const proposedDateTime = buildFutureDateTime({
-      dateISO: conversation.context.dateISO,
-      time: manualTime,
-      timeZone: clinic.timeZone
-    });
+    case SALES_STATES.BOOKING_TIME: {
 
-    if (!proposedDateTime) {
+      const manualTime = parseTimeInput(text);
+
+      if (!manualTime) {
+        return sendMessage(
+          "Hora inválida.\n\n" +
+          "Puedes escribir por ejemplo:\n" +
+          "• 14:30\n" +
+          "• 3pm\n" +
+          "• 3:30pm\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
+
+      const proposedDateTime = buildFutureDateTime({
+        dateISO: conversation.context.dateISO,
+        time: manualTime,
+        timeZone: clinic.timeZone
+      });
+
+      if (!proposedDateTime) {
+        return sendMessage(
+          "Esa hora ya pasó ⏳\n\n" +
+          "Por favor elige una hora futura."
+        );
+      }
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.ASK_NAME,
+        context: {
+          ...conversation.context,
+          startAtISO: proposedDateTime.toISO()
+        }
+      });
+
       return sendMessage(
-        "Esa hora ya pasó ⏳\n\n" +
-        "Por favor elige una hora futura."
+        "✅ Perfecto.\n\n¿Con qué nombre agendamos la demo?\n\n0️⃣ Volver atrás"
       );
     }
 
-    await updateConversation(conversation.id, {
-      state: SALES_STATES.ASK_NAME,
-      context: {
-        ...conversation.context,
-        startAtISO: proposedDateTime.toISO()
-      }
-    });
-
-    return sendMessage(
-      "✅ Perfecto.\n\n¿Con qué nombre agendamos la demo?\n\n0️⃣ Volver atrás"
-    );
-  }
     case SALES_STATES.CUSTOM_TIME: {
-
-      if (text === "0") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.BOOKING_TIME
-        });
-
-        let response = "Horarios disponibles:\n\n";
-        conversation.context.availableSlots.forEach((slot, index) => {
-          response += `${index + 1}️⃣ ${slot}\n`;
-        });
-
-        response += "4️⃣ Necesito otro horario\n\n0️⃣ Volver atrás";
-        return sendMessage(response);
-      }
 
       const manualTime = parseTime(text);
       if (!manualTime) return sendMessage("Hora inválida.");
@@ -411,108 +436,109 @@ if (text === "0") {
       return sendMessage("¿Con qué nombre agendamos?");
     }
 
-case SALES_STATES.ASK_NAME: {
+    case SALES_STATES.ASK_NAME: {
 
-  if (!text || text.length < 2) {
-    return sendMessage("Por favor indícame tu nombre 😊");
-  }
-
-  try {
-    const preferredAtUTC = new Date(conversation.context.startAtISO);
-
-    await prisma.salesDemoRequest.create({
-      data: {
-        clinicId: "sales-clinic-uuid-12345678",
-        name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
-        phone: patientPhone,
-        preferredAt: preferredAtUTC
+      if (!text || text.length < 2) {
+        return sendMessage("Por favor indícame tu nombre 😊");
       }
-    });
 
-    // ✅ NUEVO — Notificar al admin cuando se agenda nueva demo
-    const adminPhone = process.env.ADMIN_PHONE;
-    if (adminPhone) {
-      const demoDate = DateTime.fromISO(
-        conversation.context.startAtISO,
-        { zone: clinic.timeZone }
-      );
+      try {
+        const preferredAtUTC = new Date(conversation.context.startAtISO);
 
-      sendWhatsAppMessage({
-        accessToken: clinic.accessToken,
-        phoneNumberId: clinic.phoneNumberId,
-        to: adminPhone,
-        message:
-          `🎉 *Nueva Demo Agendada*\n\n` +
-          `👤 *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}*\n` +
-          `📱 ${patientPhone}\n` +
-          `📅 ${demoDate.toFormat("dd/MM/yyyy")}\n` +
-          `⏰ ${demoDate.toFormat("hh:mm a")}\n\n` +
-          `Revisa el dashboard para más detalles.`
-      }).catch(err => {
-        console.error("[salesNotification] Error notificando nueva demo:", err.message);
-      });
+        await prisma.salesDemoRequest.create({
+          data: {
+            clinicId: "sales-clinic-uuid-12345678",
+            name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
+            phone: patientPhone,
+            preferredAt: preferredAtUTC
+          }
+        });
+
+        const adminPhone = process.env.ADMIN_PHONE;
+        if (adminPhone) {
+          const demoDate = DateTime.fromISO(
+            conversation.context.startAtISO,
+            { zone: clinic.timeZone }
+          );
+
+          sendWhatsAppMessage({
+            accessToken: clinic.accessToken,
+            phoneNumberId: clinic.phoneNumberId,
+            to: adminPhone,
+            message:
+              `🎉 *Nueva Demo Agendada*\n\n` +
+              `👤 *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}*\n` +
+              `📱 ${patientPhone}\n` +
+              `📅 ${demoDate.toFormat("dd/MM/yyyy")}\n` +
+              `⏰ ${demoDate.toFormat("hh:mm a")}\n\n` +
+              `Revisa el dashboard para más detalles.`
+          }).catch(err => {
+            console.error("[salesNotification] Error notificando nueva demo:", err.message);
+          });
+        }
+
+        await closeConversation(conversation.id, SALES_STATES.COMPLETED);
+
+        const date = DateTime.fromISO(
+          conversation.context.startAtISO,
+          { zone: clinic.timeZone }
+        );
+
+        return sendMessage(
+          `✅ *Solicitud de demo recibida*\n\n` +
+          `Gracias, *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}* 🙌\n\n` +
+          `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
+          `⏰ ${date.toFormat("hh:mm a")}\n\n` +
+          "Te enviaremos el enlace de Google Meet aproximadamente 15 minutos antes de la cita.\n\n" +
+          "¡Nos vemos pronto! 🚀"
+        );
+
+      } catch (error) {
+        console.log("🔴 SALES DEMO SAVE ERROR:", error.message);
+        return sendMessage(
+          "Hubo un problema guardando tu solicitud.\n" +
+          "Por favor intenta nuevamente."
+        );
+      }
     }
 
-    await closeConversation(conversation.id, SALES_STATES.COMPLETED);
+    case SALES_STATES.COMPLETED:
+      return;
 
-    const date = DateTime.fromISO(
-      conversation.context.startAtISO,
-      { zone: clinic.timeZone }
-    );
+    case SALES_STATES.RETURNING:
 
-    return sendMessage(
-  `✅ *Solicitud de demo recibida*\n\n` +
-  `Gracias, *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}* 🙌\n\n` +
-  `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
-  `⏰ ${date.toFormat("hh:mm a")}\n\n` +
-  "Te enviaremos el enlace de Google Meet aproximadamente 15 minutos antes de la cita.\n\n" +
-  "¡Nos vemos pronto! 🚀"
-);
+      if (text === "1") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.SHOW_RESULT
+        });
 
-  } catch (error) {
+        return sendMessage(
+          "Nuestro sistema incluye:\n\n" +
+          "✅ Agendamiento automático por WhatsApp\n" +
+          "✅ Confirmaciones y recordatorios sin intervención humana\n" +
+          "✅ Reprogramaciones en un solo click\n" +
+          "✅ Reducción del tiempo operativo del personal\n" +
+          "✅ Panel con métricas reales de ocupación\n\n" +
+          "¿Deseas agendar una nueva demo?\n\n" +
+          "1️⃣ Sí, agendar\n" +
+          "0️⃣ Volver al inicio"
+        );
+      }
 
-    console.log("🔴 SALES DEMO SAVE ERROR:", error.message);
+      if (text === "2") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.BOOKING_DATE
+        });
+        return sendMessage(
+          "¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver al inicio"
+        );
+      }
 
-    return sendMessage(
-      "Hubo un problema guardando tu solicitud.\n" +
-      "Por favor intenta nuevamente."
-    );
-  }
-}
-
-case SALES_STATES.COMPLETED:
-  return;
-
-case SALES_STATES.RETURNING:
-  if (text === "1") {
-    await updateConversation(conversation.id, {
-      state: SALES_STATES.SHOW_RESULT  // ← cambia estado para que "1" siguiente vaya a booking
-    });
-
-    return sendMessage(
-      "Nuestro sistema incluye:\n\n" +
-      "✅ Agendamiento automático por WhatsApp\n" +
-      "✅ Confirmaciones y recordatorios automáticos\n" +
-      "✅ Cancelación y reprogramación sin intervención humana\n" +
-      "✅ Panel con métricas reales de ocupación\n\n" +
-      "¿Deseas agendar una nueva demo?\n\n" +
-      "1️⃣ Sí, agendar\n" +
-      "0️⃣ Volver al inicio"
-    );
-  }
-
-  if (text === "2") {
-    await updateConversation(conversation.id, {
-      state: SALES_STATES.BOOKING_DATE
-    });
-    return sendMessage("¿Para qué fecha deseas la demo?\nDD/MM/AAAA\n\n0️⃣ Volver al inicio");
-  }
-
-  return sendMessage(
-    "Por favor elige una opción:\n\n" +
-    "1️⃣ Ver información del servicio\n" +
-    "2️⃣ Agendar nueva demo"
-  );
+      return sendMessage(
+        "Por favor elige una opción:\n\n" +
+        "1️⃣ Ver información del servicio\n" +
+        "2️⃣ Agendar nueva demo"
+      );
 
     default:
       return sendMessage("Escribe *inicio* para comenzar.");
