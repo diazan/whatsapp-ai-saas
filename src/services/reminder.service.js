@@ -43,8 +43,8 @@ const processReminders = async () => {
         .setZone(clinic.timeZone);
 
       const localStartEs = localStart.setLocale("es");
-      const rawDate = localStartEs.toFormat("cccc dd 'de' LLLL");  
-      const formattedDate = localStart.toFormat("cccc dd 'de' LLLL");
+      const rawDate = localStartEs.toFormat("cccc dd 'de' LLLL");
+      const formattedDate = rawDate.charAt(0).toUpperCase() + rawDate.slice(1);
       const formattedTime = localStart.toFormat("hh:mm a");
 
       const message = [

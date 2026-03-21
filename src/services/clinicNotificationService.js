@@ -3,7 +3,8 @@ const { sendWhatsAppMessage } = require("./whatsappService");
 const CLINIC_FLOW_KEYWORDS = [
   "0", "1", "2", "3", "4", "5", "6",
   "hola", "inicio",
-  "cita", "turno", "agendar", "reservar"
+  "cita", "turno", "agendar", "reservar",
+  "Hola, me interesa conocer más sobre el servicio"
 ];
 
 // ✅ Estados del flujo donde el usuario ingresa datos
