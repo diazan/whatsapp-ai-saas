@@ -88,6 +88,17 @@ function parseTime(text) {
 }
 
 // ─────────────────────────────────────────────
+// HELPER — Capitalizar nombre correctamente
+// ─────────────────────────────────────────────
+function capitalizeName(name) {
+  return name
+    .trim()
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+// ─────────────────────────────────────────────
 // BUILDER — SHOW_RESULT
 // ─────────────────────────────────────────────
 
@@ -448,7 +459,7 @@ const handleSalesBotMessage = async ({
         await prisma.salesDemoRequest.create({
           data: {
             clinicId: "sales-clinic-uuid-12345678",
-            name: text.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
+            name: capitalizeName(text),
             phone: patientPhone,
             preferredAt: preferredAtUTC
           }
@@ -467,7 +478,7 @@ const handleSalesBotMessage = async ({
             to: adminPhone,
             message:
               `🎉 *Nueva Demo Agendada*\n\n` +
-              `👤 *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}*\n` +
+              `👤 *${capitalizeName(text)}*\n` +
               `📱 ${patientPhone}\n` +
               `📅 ${demoDate.toFormat("dd/MM/yyyy")}\n` +
               `⏰ ${demoDate.toFormat("hh:mm a")}\n\n` +
@@ -486,7 +497,7 @@ const handleSalesBotMessage = async ({
 
         return sendMessage(
           `✅ *Solicitud de demo recibida*\n\n` +
-          `Gracias, *${text.trim().replace(/\b\w/g, (c) => c.toUpperCase())}* 🙌\n\n` +
+          `Gracias, *${capitalizeName(text)}* 🙌\n\n` +
           `📅 ${date.toFormat("dd/MM/yyyy")}\n` +
           `⏰ ${date.toFormat("hh:mm a")}\n\n` +
           "Te enviaremos el enlace de Google Meet aproximadamente 15 minutos antes de la cita.\n\n" +
