@@ -42,6 +42,8 @@ const processReminders = async () => {
       const localStart = DateTime.fromJSDate(appointment.startAt)
         .setZone(clinic.timeZone);
 
+      const localStartEs = localStart.setLocale("es");
+      const rawDate = localStartEs.toFormat("cccc dd 'de' LLLL");  
       const formattedDate = localStart.toFormat("cccc dd 'de' LLLL");
       const formattedTime = localStart.toFormat("hh:mm a");
 
