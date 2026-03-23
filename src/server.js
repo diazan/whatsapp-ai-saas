@@ -126,7 +126,20 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    res.send("Access token generated. Check server logs.");
+    // ✅ Obtener WABAs conectadas
+    const wabaResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me/owned_whatsapp_business_accounts",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log("✅ WABAs:", JSON.stringify(wabaResponse.data, null, 2));
+
+    res.send("WABA fetched. Check server logs.");
+
   } catch (error) {
     console.error("❌ ERROR:", error.response?.data || error.message);
     res.status(500).send("Token exchange failed");
