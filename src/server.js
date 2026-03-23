@@ -100,6 +100,18 @@ const PORT = 4000;
 // Inicializar notificaciones clínicas (con manejo de error)
 require('./services/clinicNotificationService');
 
+app.get("/oauth/callback", async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.status(400).send("Missing code");
+  }
+
+  console.log("✅ CODE RECIBIDO:", code);
+
+  res.send("Code received. Check server logs.");
+});
+
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
