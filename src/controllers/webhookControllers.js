@@ -88,20 +88,24 @@ const handleWebhook = async (req, res) => {
       patientPhone: from
     });
 
-    if (reminderAppointment) {
+        if (reminderAppointment) {
 
-      const textLower = incomingText.toLowerCase().trim();
+      // ✅ Solo interceptar "1" y "2" si NO hay conversación activa en flujo
+      const currentState = await prisma.conversation.findFirst({
+        where: {
+          clinicId: clinic.id,
+          patientPhone: from,
+          active: true
+        }
+      });
 
-      // ✅ Solo interceptar si NO es comando global
-      const isGlobalCommand =
-        textLower === "0" ||
-        textLower === "hola" ||
-        textLower === "inicio";
+      const state = currentState?.state ?? "IDLE";
 
-      if (!isGlobalCommand) {
+      // ✅ Solo responder al reminder si está en IDLE
+      // Si está en cualquier otro estado → está navegando el menú
+      if (state === "IDLE") {
 
         if (incomingText === "1") {
-
           await prisma.appointment.update({
             where: { id: reminderAppointment.id },
             data: { status: "confirmed" }
@@ -118,7 +122,6 @@ const handleWebhook = async (req, res) => {
         }
 
         if (incomingText === "2") {
-
           await prisma.appointment.update({
             where: { id: reminderAppointment.id },
             data: { status: "cancelled" }
@@ -134,20 +137,9 @@ const handleWebhook = async (req, res) => {
 
           return;
         }
-
-        // ✅ Respuesta inválida dentro del contexto de reminder
-        await sendWhatsAppMessage({
-          accessToken: clinic.accessToken,
-          phoneNumberId: clinic.phoneNumberId,
-          to: from,
-          message:
-            "Por favor responde con el número de una opción:\n\n1️⃣ Confirmar asistencia\n2️⃣ Cancelar cita"
-        });
-
-        return;
       }
 
-      // ✅ Si es comando global → cae al flujo normal abajo
+      // ✅ Si está en otro estado o escribió otra cosa → flujo normal
     }
 
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
