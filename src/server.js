@@ -100,6 +100,8 @@ const PORT = 4000;
 // Inicializar notificaciones clínicas (con manejo de error)
 require('./services/clinicNotificationService');
 
+import axios from "axios";
+
 app.get("/oauth/callback", async (req, res) => {
   const { code } = req.query;
 
@@ -107,9 +109,29 @@ app.get("/oauth/callback", async (req, res) => {
     return res.status(400).send("Missing code");
   }
 
-  console.log("✅ CODE RECIBIDO:", code);
+  try {
+    const tokenResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/oauth/access_token",
+      {
+        params: {
+          client_id: process.env.META_APP_ID,
+          client_secret: process.env.META_APP_SECRET,
+          redirect_uri:
+            "https://whatsapp-ai-saas-exgf.onrender.com/oauth/callback",
+          code,
+        },
+      }
+    );
 
-  res.send("Code received. Check server logs.");
+    const accessToken = tokenResponse.data.access_token;
+
+    console.log("✅ ACCESS TOKEN:", accessToken);
+
+    res.send("Access token generated. Check server logs.");
+  } catch (error) {
+    console.error("❌ ERROR:", error.response?.data || error.message);
+    res.status(500).send("Token exchange failed");
+  }
 });
 
 
