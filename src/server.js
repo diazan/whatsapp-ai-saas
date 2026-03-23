@@ -99,7 +99,7 @@ const PORT = 4000;
 // Inicializar notificaciones clínicas (con manejo de error)
 require('./services/clinicNotificationService');
 
-import axios from "axios";
+const axios = require("axios");
 
 app.get("/oauth/callback", async (req, res) => {
   const { code } = req.query;
