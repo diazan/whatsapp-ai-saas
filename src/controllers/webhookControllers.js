@@ -11,15 +11,13 @@ const processedMessages = new Set();
 
 const handleWebhook = async (req, res) => {
   console.log("🔥 WEBHOOK HIT");
-  
-  res.sendStatus(200);
 
   try {
     const value = req.body.entry?.[0]?.changes?.[0]?.value;
 
     if (!value) {
       console.log("No value in webhook body");
-      return;
+      return res.sendStatus(200);
     }
 
     const phoneNumberId = value.metadata?.phone_number_id;
@@ -28,19 +26,19 @@ const handleWebhook = async (req, res) => {
 
     if (!phoneNumberId) {
       console.log("No phoneNumberId found");
-      return;
+      return res.sendStatus(200);
     }
 
     if (!value.messages || value.messages.length === 0) {
       console.log("No incoming messages (probably status update)");
-      return;
+      return res.sendStatus(200);
     }
 
     const message = value.messages[0];
 
     if (processedMessages.has(message.id)) {
       console.log("Duplicate message ignored:", message.id);
-      return;
+      return res.sendStatus(200);
     }
 
     processedMessages.add(message.id);
@@ -51,47 +49,40 @@ const handleWebhook = async (req, res) => {
 
     if (message.from === phoneNumberId) {
       console.log("Ignoring own message (loop prevention)");
-      return;
+      return res.sendStatus(200);
     }
 
     if (message.type !== "text") {
       console.log("Ignoring non-text message");
-      return;
+      return res.sendStatus(200);
     }
 
     const incomingText = message.text?.body?.trim();
-
     console.log("📩 Incoming message:", incomingText);
-
-    
-    
-    
 
     const clinic = await getClinicByPhoneNumberId(phoneNumberId);
 
-
-
     if (!clinic) {
       console.log("Clinic not found for phoneNumberId:", phoneNumberId);
-      return;
+      return res.sendStatus(200);
     }
 
     if (clinic.status !== "active") {
       console.log("Clinic inactive:", clinic.id);
-      return;
+      return res.sendStatus(200);
     }
 
     const from = message.from;
 
-
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
     const { handleSalesBotMessage } = require("../services/salesBot.service");
 
-
-    if (process.env.DEMO_PHONE_NUMBER_ID && 
-        clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID) {
-
-        const salesConversation = await prisma.conversation.findFirst({
+    // ✅ SALES BOT (DEMO)
+    if (
+      process.env.DEMO_PHONE_NUMBER_ID &&
+      clinic.phoneNumberId === process.env.DEMO_PHONE_NUMBER_ID
+    ) {
+      const salesConversation = await prisma.conversation.findFirst({
         where: {
           clinicId: clinic.id,
           patientPhone: from,
@@ -120,10 +111,10 @@ const handleWebhook = async (req, res) => {
         conversationState: salesConversation?.state ?? "SALES_IDLE"
       });
 
-      return;
+      return res.sendStatus(200);
     }
 
-    // ✅ Leer estado ANTES con prisma directo
+    // ✅ Leer estado ANTES
     const currentConversation = await prisma.conversation.findFirst({
       where: {
         clinicId: clinic.id,
@@ -135,7 +126,10 @@ const handleWebhook = async (req, res) => {
     console.log("💬 Procesando mensaje de:", from);
     console.log("💬 Texto:", incomingText);
     console.log("💬 Message ID:", message.id);
-    console.log("💬 Estado conversación:", currentConversation?.state ?? "SIN CONVERSACIÓN");
+    console.log(
+      "💬 Estado conversación:",
+      currentConversation?.state ?? "SIN CONVERSACIÓN"
+    );
     console.log("💬 ExpiresAt:", currentConversation?.expiresAt ?? "N/A");
 
     await handleIncomingMessage({
@@ -153,7 +147,6 @@ const handleWebhook = async (req, res) => {
       }
     });
 
-    // ✅ Una sola llamada con estado correcto
     await evaluateClinicNotification({
       phone: from,
       clinic,
@@ -162,8 +155,10 @@ const handleWebhook = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Webhook internal error:", error.message);
+    console.error("❌ Webhook internal error:", error);
   }
+
+  return res.sendStatus(200);
 };
 
 module.exports = {
