@@ -826,7 +826,7 @@ async function handleTimeSelection({ text, clinic, conversation, sendMessage }) 
       `🦷 Servicio: ${serviceName}\n` +
       `📅 Fecha: ${formattedDate}\n` +
       `⏰ Hora: ${formattedTime}\n\n` +
-      buildMainMenu(clinic)
+      `0️⃣ Volver al menú principal`
     );
 
   } catch (error) {
@@ -1013,7 +1013,7 @@ async function handleRescheduleConfirmation({ text, clinic, conversation, sendMe
         `✅ Tu cita ha sido reprogramada\n\n` +
         `📅 Fecha: ${dateTime.toFormat("dd/MM/yyyy")}\n` +
         `⏰ Hora: ${dateTime.toFormat("hh:mm a")}\n\n` +
-        buildMainMenu(clinic)
+        `0️⃣ Volver al menú principal`
       );
 
     } catch (error) {
@@ -1036,7 +1036,7 @@ async function handleRescheduleConfirmation({ text, clinic, conversation, sendMe
     });
 
     return sendMessage(
-      `Operación cancelada ✅\n\n` + buildMainMenu(clinic)
+      `Operación cancelada ✅\n\n0️⃣ Volver al menú principal`
     );
   }
 
@@ -1117,7 +1117,7 @@ async function handleCancelConfirmation({ text, clinic, conversation, sendMessag
       `✅ Tu cita ha sido cancelada correctamente.\n\n` +
       `📆 Fecha: ${dateTime.toFormat("dd/MM/yyyy")}\n` +
       `⏰ Hora: ${dateTime.toFormat("hh:mm a")}\n\n` +
-      buildMainMenu(clinic)
+      `0️⃣ Volver al menú principal`
     );
   }
 
