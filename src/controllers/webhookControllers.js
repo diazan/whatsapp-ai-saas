@@ -190,6 +190,12 @@ const handleWebhook = async (req, res) => {
       }
     });
 
+    console.log("💬 Procesando mensaje de:", from);
+    console.log("💬 Texto:", incomingText);
+    console.log("💬 Message ID:", message.id);
+    console.log("💬 Estado conversación:", currentConversation?.state ?? "SIN CONVERSACIÓN");
+    console.log("💬 ExpiresAt:", currentConversation?.expiresAt ?? "N/A");
+
     await handleIncomingMessage({
       clinic,
       message: incomingText,
