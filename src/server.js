@@ -1,4 +1,3 @@
-require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
 console.log("🔑 ENV CHECK:", {
   WEBHOOK_VERIFY_TOKEN: process.env.VERIFY_TOKEN,
   DEMO_PHONE_NUMBER_ID: process.env.DEMO_PHONE_NUMBER_ID,
