@@ -133,6 +133,9 @@ const handleIncomingMessage = async ({
     case "WAITING_DATE":
       return handleDateSelection({ text, conversation, sendMessage });
 
+    case "WAITING_REMINDER_RESPONSE":
+      return handleReminderResponse({ text, clinic, conversation, sendMessage });
+
     case "WAITING_NAME":
       return handleNameCollection({ text, conversation, sendMessage });
 
@@ -1249,6 +1252,52 @@ function capitalizeName(name) {
     .split(" ")
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+async function handleReminderResponse({ text, clinic, conversation, sendMessage }) {
+
+  const appointmentId = conversation.context?.appointmentId;
+
+  if (text === "1") {
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "confirmed" }
+    });
+
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      appendMainMenuOption("✅ Tu cita ha sido confirmada. ¡Te esperamos!")
+    );
+  }
+
+  if (text === "2") {
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "cancelled" }
+    });
+
+    await updateConversation(conversation.id, {
+      state: "IDLE",
+      context: {}
+    });
+
+    return sendMessage(
+      appendMainMenuOption(
+        "✅ Tu cita ha sido cancelada.\nSi deseas agendar nuevamente, escríbenos cuando quieras."
+      )
+    );
+  }
+
+  // ✅ Respuesta inválida
+  return sendMessage(
+    "Por favor responde:\n\n" +
+    "1️⃣ Confirmar asistencia\n" +
+    "2️⃣ Cancelar cita"
+  );
 }
 
 module.exports = { handleIncomingMessage };

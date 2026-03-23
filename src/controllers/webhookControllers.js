@@ -83,64 +83,6 @@ const handleWebhook = async (req, res) => {
 
     const from = message.from;
 
-    const reminderAppointment = await getReminderWindowAppointment({
-      clinicId: clinic.id,
-      patientPhone: from
-    });
-
-        if (reminderAppointment) {
-
-      // ✅ Solo interceptar "1" y "2" si NO hay conversación activa en flujo
-      const currentState = await prisma.conversation.findFirst({
-        where: {
-          clinicId: clinic.id,
-          patientPhone: from,
-          active: true
-        }
-      });
-
-      const state = currentState?.state ?? "IDLE";
-
-      // ✅ Solo responder al reminder si está en IDLE
-      // Si está en cualquier otro estado → está navegando el menú
-      if (state === "IDLE") {
-
-        if (incomingText === "1") {
-          await prisma.appointment.update({
-            where: { id: reminderAppointment.id },
-            data: { status: "confirmed" }
-          });
-
-          await sendWhatsAppMessage({
-            accessToken: clinic.accessToken,
-            phoneNumberId: clinic.phoneNumberId,
-            to: from,
-            message: "✅ Tu cita ha sido confirmada. ¡Te esperamos!"
-          });
-
-          return;
-        }
-
-        if (incomingText === "2") {
-          await prisma.appointment.update({
-            where: { id: reminderAppointment.id },
-            data: { status: "cancelled" }
-          });
-
-          await sendWhatsAppMessage({
-            accessToken: clinic.accessToken,
-            phoneNumberId: clinic.phoneNumberId,
-            to: from,
-            message:
-              "✅ Tu cita ha sido cancelada.\nSi deseas agendar nuevamente, escríbenos cuando quieras."
-          });
-
-          return;
-        }
-      }
-
-      // ✅ Si está en otro estado o escribió otra cosa → flujo normal
-    }
 
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
     const { handleSalesBotMessage } = require("../services/salesBot.service");
