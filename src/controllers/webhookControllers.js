@@ -90,49 +90,52 @@ const handleWebhook = async (req, res) => {
 
     if (reminderAppointment) {
 
-      // ✅ Respetar comandos globales primero
       const textLower = incomingText.toLowerCase().trim();
-      if (
+
+      // ✅ Solo interceptar si NO es comando global
+      const isGlobalCommand =
         textLower === "0" ||
         textLower === "hola" ||
-        textLower === "inicio"
-      ) {
-        // ✅ Dejar pasar al flujo normal
-      } else if (incomingText === "1") {
+        textLower === "inicio";
 
-        await prisma.appointment.update({
-          where: { id: reminderAppointment.id },
-          data: { status: "confirmed" }
-        });
+      if (!isGlobalCommand) {
 
-        await sendWhatsAppMessage({
-          accessToken: clinic.accessToken,
-          phoneNumberId: clinic.phoneNumberId,
-          to: from,
-          message: "✅ Tu cita ha sido confirmada. ¡Te esperamos!"
-        });
+        if (incomingText === "1") {
 
-        return;
+          await prisma.appointment.update({
+            where: { id: reminderAppointment.id },
+            data: { status: "confirmed" }
+          });
 
-      } else if (incomingText === "2") {
+          await sendWhatsAppMessage({
+            accessToken: clinic.accessToken,
+            phoneNumberId: clinic.phoneNumberId,
+            to: from,
+            message: "✅ Tu cita ha sido confirmada. ¡Te esperamos!"
+          });
 
-        await prisma.appointment.update({
-          where: { id: reminderAppointment.id },
-          data: { status: "cancelled" }
-        });
+          return;
+        }
 
-        await sendWhatsAppMessage({
-          accessToken: clinic.accessToken,
-          phoneNumberId: clinic.phoneNumberId,
-          to: from,
-          message:
-            "✅ Tu cita ha sido cancelada.\nSi deseas agendar nuevamente, escríbenos cuando quieras."
-        });
+        if (incomingText === "2") {
 
-        return;
+          await prisma.appointment.update({
+            where: { id: reminderAppointment.id },
+            data: { status: "cancelled" }
+          });
 
-      } else {
+          await sendWhatsAppMessage({
+            accessToken: clinic.accessToken,
+            phoneNumberId: clinic.phoneNumberId,
+            to: from,
+            message:
+              "✅ Tu cita ha sido cancelada.\nSi deseas agendar nuevamente, escríbenos cuando quieras."
+          });
 
+          return;
+        }
+
+        // ✅ Respuesta inválida dentro del contexto de reminder
         await sendWhatsAppMessage({
           accessToken: clinic.accessToken,
           phoneNumberId: clinic.phoneNumberId,
@@ -143,6 +146,8 @@ const handleWebhook = async (req, res) => {
 
         return;
       }
+
+      // ✅ Si es comando global → cae al flujo normal abajo
     }
 
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
