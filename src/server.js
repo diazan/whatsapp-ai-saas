@@ -127,8 +127,23 @@ app.get("/oauth/callback", async (req, res) => {
     console.log("✅ ACCESS TOKEN:", accessToken);
 
     // ✅ Obtener WABAs conectadas
+    // 1️⃣ Obtener businesses conectados
+    const businessesResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me/businesses",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log("✅ BUSINESSES:", JSON.stringify(businessesResponse.data, null, 2));
+
+    const businessId = businessesResponse.data.data[0].id;
+
+    // 2️⃣ Obtener WABAs de ese business
     const wabaResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me/owned_whatsapp_business_accounts",
+      `https://graph.facebook.com/v19.0/${businessId}/owned_whatsapp_business_accounts`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
