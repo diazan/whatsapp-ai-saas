@@ -90,15 +90,16 @@ const handleWebhook = async (req, res) => {
 
     if (reminderAppointment) {
 
-      // ✅ AGREGAR AQUÍ - Evaluar notificación ANTES de los returns
-      await evaluateClinicNotification({
-        phone: from,
-        clinic,
-        incomingMessage: incomingText,
-        conversationState: "WAITING_REMINDER_RESPONSE"
-      });
+      // ✅ Respetar comandos globales primero
+      const textLower = incomingText.toLowerCase().trim();
+      if (
+        textLower === "0" ||
+        textLower === "hola" ||
+        textLower === "inicio"
+      ) {
+        // ✅ Dejar pasar al flujo normal
+      } else if (incomingText === "1") {
 
-      if (incomingText === "1") {
         await prisma.appointment.update({
           where: { id: reminderAppointment.id },
           data: { status: "confirmed" }
@@ -112,9 +113,9 @@ const handleWebhook = async (req, res) => {
         });
 
         return;
-      }
 
-      if (incomingText === "2") {
+      } else if (incomingText === "2") {
+
         await prisma.appointment.update({
           where: { id: reminderAppointment.id },
           data: { status: "cancelled" }
@@ -129,17 +130,19 @@ const handleWebhook = async (req, res) => {
         });
 
         return;
-      }
 
-      await sendWhatsAppMessage({
-        accessToken: clinic.accessToken,
-        phoneNumberId: clinic.phoneNumberId,
-        to: from,
-        message:
-          "Por favor responde con el número de una opción:\n\n1️⃣ Confirmar asistencia\n2️⃣ Cancelar cita"
-      });
-       
-      return;
+      } else {
+
+        await sendWhatsAppMessage({
+          accessToken: clinic.accessToken,
+          phoneNumberId: clinic.phoneNumberId,
+          to: from,
+          message:
+            "Por favor responde con el número de una opción:\n\n1️⃣ Confirmar asistencia\n2️⃣ Cancelar cita"
+        });
+
+        return;
+      }
     }
 
     const { handleIncomingMessage } = require("../services/conversation.state-machine");
