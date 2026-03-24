@@ -126,10 +126,23 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ Debug token
-    // ✅ Obtener WABAs accesibles con este token
+    // ✅ 1. Obtener info básica del usuario
+    const meResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const userId = meResponse.data.id;
+
+    console.log("✅ USER ID:", userId);
+
+    // ✅ 2. Obtener WABAs asociadas a ese usuario
     const wabaResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me?fields=whatsapp_business_accounts",
+      `https://graph.facebook.com/v19.0/${userId}/whatsapp_business_accounts`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
