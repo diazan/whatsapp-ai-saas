@@ -110,10 +110,13 @@ function buildShowResult(volume) {
     `Con aproximadamente ${volume} citas al mes,\n\n` +
     `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
     `📈 *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
-    `¿Te gustaría agendar una demo personalizada?\n\n` +
-    `1️⃣ Sí, agendar demo\n` +
+    `📉 🎁 Sobre tus 30 Días GRATIS\n\n` +
+    `📉 Conectar tu sistema requiere configuraciones técnicas con Meta, pero nosotros nos encargamos del 100% por ti para que no pierdas tiempo.\n\n` +
+    `📉 Agendemos una breve llamada solo 15 min para coordinar los accesos, y nosotros hacemos el trabajo pesado en interno.\n\n` +
+    `¿Cómo te gustaría avanzar?\n\n` +
+    `1️⃣ Activar mes gratis\n` +
     `2️⃣ Más información\n` +
-    `3️⃣ Probar cómo funciona\n\n` +
+    `3️⃣ Probar demo interactiva\n\n` +
     `0️⃣ Volver al inicio`
   );
 }
@@ -253,8 +256,9 @@ const handleSalesBotMessage = async ({
 
     return sendMessage(
       "👋 Hola. ¡Gracias por comunicarte con *Kerbo*!\n\n" +
-      "La mayoría de negocios con agenda pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
-      "*Kerbo-flow* ayuda a reducir eso automáticamente con confirmaciones y recordatorios por WhatsApp.\n\n" +
+      "Estás a un paso de activar tus 30 DÍAS GRATIS de nuestro sistema. 🎁\n\n"+
+      "Como sabes, la mayoría de negocios con agenda pierden entre 10% y 25% de ingresos por cancelaciones y ausencias.\n\n" +
+      "*Kerbo* ayuda a reducir eso automáticamente con recordatorios por WhatsApp.\n\n" +
       "¿Quieres ver cómo funciona en tu clínica?\n\n" +
       "1️⃣ Sí, muéstrame"
     );
