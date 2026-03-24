@@ -127,9 +127,9 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ 2. Obtener números asociados a la WABA (endpoint correcto)
-    const phoneResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me/phone_numbers",
+    // ✅ 2. Obtener Businesses
+    const businessResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me/businesses",
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -138,11 +138,45 @@ app.get("/oauth/callback", async (req, res) => {
     );
 
     console.log(
-      "✅ PHONE DATA:",
+      "✅ BUSINESSES:",
+      JSON.stringify(businessResponse.data, null, 2)
+    );
+
+    const businessId = businessResponse.data.data[0].id;
+
+    // ✅ 3. Obtener WABAs
+    const wabaResponse = await axios.get(
+      `https://graph.facebook.com/v19.0/${businessId}/owned_whatsapp_business_accounts`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log(
+      "✅ WABAs:",
+      JSON.stringify(wabaResponse.data, null, 2)
+    );
+
+    const wabaId = wabaResponse.data.data[0].id;
+
+    // ✅ 4. Obtener phone numbers
+    const phoneResponse = await axios.get(
+      `https://graph.facebook.com/v19.0/${wabaId}/phone_numbers`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log(
+      "✅ PHONE NUMBERS:",
       JSON.stringify(phoneResponse.data, null, 2)
     );
 
-    res.send("Phone data fetched. Check server logs.");
+    res.send("Integration data fetched. Check server logs.");
   } catch (error) {
     console.error(
       "❌ ERROR:",
