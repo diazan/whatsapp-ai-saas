@@ -110,9 +110,9 @@ function buildShowResult(volume) {
     `Con aproximadamente ${volume} citas al mes,\n\n` +
     `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
     `📈 *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
-    `📉 🎁 Sobre tus 30 Días GRATIS (Cupos limitados)\n\n` +
-    `📉 Conectar tu sistema requiere configuraciones técnicas con Meta, pero nosotros nos encargamos del 100% por ti para que no pierdas tiempo.\n\n` +
-    `📉 Agendemos una breve llamada solo 15 min para coordinar los accesos, y nosotros hacemos el trabajo pesado en interno.\n\n` +
+    `🎁 Sobre tus 30 Días GRATIS (Cupos limitados)\n\n` +
+    `Dado que hacemos una instalación VIP 100% manual para asegurar que tu bot funcione perfecto, **solo abrimos 5 cupos cada mes para clínicas nuevas.**\n\n` +
+    `Agendemos una breve llamada de 15 min para coordinar los accesos y asegurar tu lugar antes de que se llenen los cupos.\n\n` +
     `¿Cómo te gustaría avanzar?\n\n` +
     `1️⃣ Activar mes gratis\n` +
     `2️⃣ Más información\n` +
