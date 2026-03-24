@@ -109,6 +109,7 @@ app.get("/oauth/callback", async (req, res) => {
   }
 
   try {
+    // ✅ 1. Intercambiar code por access token
     const tokenResponse = await axios.get(
       "https://graph.facebook.com/v19.0/oauth/access_token",
       {
@@ -126,23 +127,9 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ 1. Obtener info básica del usuario
-    const meResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me",
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const userId = meResponse.data.id;
-
-    console.log("✅ USER ID:", userId);
-
-    // ✅ 2. Obtener WABAs asociadas a ese usuario
-    const wabaResponse = await axios.get(
-      `https://graph.facebook.com/v19.0/${userId}/whatsapp_business_accounts`,
+    // ✅ 2. Obtener números asociados a la WABA (endpoint correcto)
+    const phoneResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me/phone_numbers",
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -151,11 +138,11 @@ app.get("/oauth/callback", async (req, res) => {
     );
 
     console.log(
-      "✅ WABA DATA:",
-      JSON.stringify(wabaResponse.data, null, 2)
+      "✅ PHONE DATA:",
+      JSON.stringify(phoneResponse.data, null, 2)
     );
 
-    res.send("WABA fetched. Check server logs.");
+    res.send("Phone data fetched. Check server logs.");
   } catch (error) {
     console.error(
       "❌ ERROR:",
