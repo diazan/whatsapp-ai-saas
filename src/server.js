@@ -109,6 +109,7 @@ app.get("/oauth/callback", async (req, res) => {
   }
 
   try {
+    // 1️⃣ Intercambiar code por token
     const tokenResponse = await axios.get(
       "https://graph.facebook.com/v19.0/oauth/access_token",
       {
@@ -126,9 +127,39 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ Obtener WABAs directamente con SYSTEM_USER token
+    // 2️⃣ Obtener info del system user
+    const debugResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/debug_token",
+      {
+        params: {
+          input_token: accessToken,
+          access_token:
+            process.env.META_APP_ID + "|" + process.env.META_APP_SECRET,
+        },
+      }
+    );
+
+    const systemUserId = debugResponse.data.data.user_id;
+
+    console.log("✅ SYSTEM USER ID:", systemUserId);
+
+    // 3️⃣ Obtener business del system user
+    const systemUserResponse = await axios.get(
+      `https://graph.facebook.com/v19.0/${systemUserId}?fields=business`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const businessId = systemUserResponse.data.business.id;
+
+    console.log("✅ BUSINESS ID:", businessId);
+
+    // 4️⃣ Obtener WABAs
     const wabaResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/whatsapp_business_accounts",
+      `https://graph.facebook.com/v19.0/${businessId}/owned_whatsapp_business_accounts`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -137,11 +168,28 @@ app.get("/oauth/callback", async (req, res) => {
     );
 
     console.log(
-      "✅ WABA DATA:",
+      "✅ WABAs:",
       JSON.stringify(wabaResponse.data, null, 2)
     );
 
-    res.send("WABA fetched. Check server logs.");
+    const wabaId = wabaResponse.data.data[0].id;
+
+    // 5️⃣ Obtener números
+    const phoneResponse = await axios.get(
+      `https://graph.facebook.com/v19.0/${wabaId}/phone_numbers`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log(
+      "✅ PHONE NUMBERS:",
+      JSON.stringify(phoneResponse.data, null, 2)
+    );
+
+    res.send("Integration data fetched. Check logs.");
   } catch (error) {
     console.error(
       "❌ ERROR:",
