@@ -126,26 +126,32 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ Obtener WhatsApp Business Accounts directamente
-    const wabaResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me/whatsapp_business_accounts",
+    // ✅ Debug token
+    const debugResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/debug_token",
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+        params: {
+          input_token: accessToken,
+          access_token:
+            process.env.META_APP_ID + "|" + process.env.META_APP_SECRET,
         },
       }
     );
 
-    console.log("✅ WABAs:", JSON.stringify(wabaResponse.data, null, 2));
+    console.log(
+      "✅ DEBUG TOKEN:",
+      JSON.stringify(debugResponse.data, null, 2)
+    );
 
-        res.send("WABA fetched. Check server logs.");
-
-      } catch (error) {
-        console.error("❌ ERROR:", error.response?.data || error.message);
-        res.status(500).send("Token exchange failed");
-      }
-    });
-
+    res.send("Debug complete. Check server logs.");
+  } catch (error) {
+    console.error(
+      "❌ ERROR:",
+      error.response ? error.response.data : error.message
+    );
+    res.status(500).send("Token exchange failed");
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
