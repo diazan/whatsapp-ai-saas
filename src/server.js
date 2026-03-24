@@ -109,7 +109,7 @@ app.get("/oauth/callback", async (req, res) => {
   }
 
   try {
-    // ✅ 1. Intercambiar code por access token
+    // 1️⃣ Intercambiar code por token
     const tokenResponse = await axios.get(
       "https://graph.facebook.com/v19.0/oauth/access_token",
       {
@@ -127,56 +127,24 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ 2. Obtener Businesses
-    const businessResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me/businesses",
+    // 2️⃣ Debug token (este SÍ funciona)
+    const debugResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/debug_token",
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+        params: {
+          input_token: accessToken,
+          access_token:
+            process.env.META_APP_ID + "|" + process.env.META_APP_SECRET,
         },
       }
     );
 
     console.log(
-      "✅ BUSINESSES:",
-      JSON.stringify(businessResponse.data, null, 2)
+      "✅ DEBUG TOKEN:",
+      JSON.stringify(debugResponse.data, null, 2)
     );
 
-    const businessId = businessResponse.data.data[0].id;
-
-    // ✅ 3. Obtener WABAs
-    const wabaResponse = await axios.get(
-      `https://graph.facebook.com/v19.0/${businessId}/owned_whatsapp_business_accounts`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    console.log(
-      "✅ WABAs:",
-      JSON.stringify(wabaResponse.data, null, 2)
-    );
-
-    const wabaId = wabaResponse.data.data[0].id;
-
-    // ✅ 4. Obtener phone numbers
-    const phoneResponse = await axios.get(
-      `https://graph.facebook.com/v19.0/${wabaId}/phone_numbers`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    console.log(
-      "✅ PHONE NUMBERS:",
-      JSON.stringify(phoneResponse.data, null, 2)
-    );
-
-    res.send("Integration data fetched. Check server logs.");
+    res.send("Debug complete. Check server logs.");
   } catch (error) {
     console.error(
       "❌ ERROR:",
