@@ -127,23 +127,22 @@ app.get("/oauth/callback", async (req, res) => {
     console.log("✅ ACCESS TOKEN:", accessToken);
 
     // ✅ Debug token
-    const debugResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/debug_token",
+    // ✅ Obtener WABAs accesibles con este token
+    const wabaResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me?fields=whatsapp_business_accounts",
       {
-        params: {
-          input_token: accessToken,
-          access_token:
-            process.env.META_APP_ID + "|" + process.env.META_APP_SECRET,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       }
     );
 
     console.log(
-      "✅ DEBUG TOKEN:",
-      JSON.stringify(debugResponse.data, null, 2)
+      "✅ WABA DATA:",
+      JSON.stringify(wabaResponse.data, null, 2)
     );
 
-    res.send("Debug complete. Check server logs.");
+    res.send("WABA fetched. Check server logs.");
   } catch (error) {
     console.error(
       "❌ ERROR:",
