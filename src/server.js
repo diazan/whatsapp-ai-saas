@@ -126,24 +126,9 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ ACCESS TOKEN:", accessToken);
 
-    // ✅ Obtener WABAs conectadas
-    // 1️⃣ Obtener businesses conectados
-    const businessesResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me/businesses",
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    console.log("✅ BUSINESSES:", JSON.stringify(businessesResponse.data, null, 2));
-
-    const businessId = businessesResponse.data.data[0].id;
-
-    // 2️⃣ Obtener WABAs de ese business
+    // ✅ Obtener WhatsApp Business Accounts directamente
     const wabaResponse = await axios.get(
-      `https://graph.facebook.com/v19.0/${businessId}/owned_whatsapp_business_accounts`,
+      "https://graph.facebook.com/v19.0/me/whatsapp_business_accounts",
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -153,13 +138,13 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ WABAs:", JSON.stringify(wabaResponse.data, null, 2));
 
-    res.send("WABA fetched. Check server logs.");
+        res.send("WABA fetched. Check server logs.");
 
-  } catch (error) {
-    console.error("❌ ERROR:", error.response?.data || error.message);
-    res.status(500).send("Token exchange failed");
-  }
-});
+      } catch (error) {
+        console.error("❌ ERROR:", error.response?.data || error.message);
+        res.status(500).send("Token exchange failed");
+      }
+    });
 
 
 app.listen(PORT, () => {
