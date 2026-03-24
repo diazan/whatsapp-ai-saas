@@ -110,7 +110,7 @@ function buildShowResult(volume) {
     `Con aproximadamente ${volume} citas al mes,\n\n` +
     `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
     `📈 *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
-    `📉 🎁 Sobre tus 30 Días GRATIS\n\n` +
+    `📉 🎁 Sobre tus 30 Días GRATIS (Cupos limitados)\n\n` +
     `📉 Conectar tu sistema requiere configuraciones técnicas con Meta, pero nosotros nos encargamos del 100% por ti para que no pierdas tiempo.\n\n` +
     `📉 Agendemos una breve llamada solo 15 min para coordinar los accesos, y nosotros hacemos el trabajo pesado en interno.\n\n` +
     `¿Cómo te gustaría avanzar?\n\n` +
