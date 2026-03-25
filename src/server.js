@@ -157,23 +157,22 @@ const debugResponse2 = await axios.get(
 const businessId = debugResponse.data.data.granular_scopes[0].target_ids[0];
 
 console.log("✅ BUSINESS ID:", businessId);
-
+console.log("DEBUG TOKEN FULL:", JSON.stringify(debugResponse.data, null, 2));
     // 4️⃣ Obtener WABAs
-    const wabaResponse = await axios.get(
-      `https://graph.facebook.com/v19.0/${businessId}/owned_whatsapp_business_accounts`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+const wabaResponse = await axios.get(
+  "https://graph.facebook.com/v19.0/me/whatsapp_business_accounts",
+  {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }
+);
 
-    console.log(
-      "✅ WABAs:",
-      JSON.stringify(wabaResponse.data, null, 2)
-    );
+console.log("✅ WABAs:", wabaResponse.data);
 
-    const wabaId = wabaResponse.data.data[0].id;
+const wabaId = wabaResponse.data.data[0].id;
+
+    
 
     // 5️⃣ Obtener números
     const phoneResponse = await axios.get(
