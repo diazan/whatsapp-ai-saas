@@ -119,7 +119,7 @@ app.get("/oauth/callback", async (req, res) => {
           client_id: process.env.META_APP_ID,
           client_secret: process.env.META_APP_SECRET,
           redirect_uri:
-            "https://whatsapp-ai-saas-exgf.onrender.com/oauth/callback",
+            "https://www.kerbo.co/api/oauth/callback",
           code,
         },
       }
