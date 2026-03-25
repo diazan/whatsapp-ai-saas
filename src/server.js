@@ -104,6 +104,8 @@ const axios = require("axios");
 app.get("/oauth/callback", async (req, res) => {
   const { code } = req.query;
 
+  console.log("QUERY PARAMS:", req.query);
+
   if (!code) {
     return res.status(400).send("Missing code");
   }
