@@ -143,19 +143,20 @@ app.get("/oauth/callback", async (req, res) => {
 
     console.log("✅ SYSTEM USER ID:", systemUserId);
 
-    // 3️⃣ Obtener business del system user
-    const businessesResponse = await axios.get(
-      "https://graph.facebook.com/v19.0/me/businesses",
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+const debugResponse2 = await axios.get(
+  "https://graph.facebook.com/v19.0/debug_token",
+  {
+    params: {
+      input_token: accessToken,
+      access_token:
+        process.env.META_APP_ID + "|" + process.env.META_APP_SECRET,
+    },
+  }
+);
 
-    const businessId = businessesResponse.data.data[0].id;
+const businessId = debugResponse.data.data.granular_scopes[0].target_ids[0];
 
-    console.log("✅ BUSINESS ID:", businessId);
+console.log("✅ BUSINESS ID:", businessId);
 
     // 4️⃣ Obtener WABAs
     const wabaResponse = await axios.get(
