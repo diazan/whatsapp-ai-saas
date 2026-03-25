@@ -144,8 +144,8 @@ app.get("/oauth/callback", async (req, res) => {
     console.log("✅ SYSTEM USER ID:", systemUserId);
 
     // 3️⃣ Obtener business del system user
-    const systemUserResponse = await axios.get(
-      `https://graph.facebook.com/v19.0/${systemUserId}?fields=business`,
+    const businessesResponse = await axios.get(
+      "https://graph.facebook.com/v19.0/me/businesses",
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -153,7 +153,7 @@ app.get("/oauth/callback", async (req, res) => {
       }
     );
 
-    const businessId = systemUserResponse.data.business.id;
+    const businessId = businessesResponse.data.data[0].id;
 
     console.log("✅ BUSINESS ID:", businessId);
 
