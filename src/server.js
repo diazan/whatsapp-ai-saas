@@ -118,8 +118,7 @@ app.get("/oauth/callback", async (req, res) => {
         params: {
           client_id: process.env.META_APP_ID,
           client_secret: process.env.META_APP_SECRET,
-          redirect_uri:
-            "https://www.kerbo.co/api/oauth/callback",
+          redirect_uri:"https://www.kerbo.co/api/oauth/callback",
           code,
         },
       }
