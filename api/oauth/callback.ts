@@ -20,6 +20,7 @@ router.post("/", async (req: Request, res: Response) => {
         params: {
           client_id: process.env.META_APP_ID,
           client_secret: process.env.META_APP_SECRET,
+          redirect_uri: process.env.META_REDIRECT_URI,
           code,
         },
       }
