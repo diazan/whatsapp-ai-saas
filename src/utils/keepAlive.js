@@ -16,7 +16,7 @@ function startKeepAlive() {
       .on('error', (err) => {
         console.error('[KeepAlive] Error:', err.message);
       });
-  }, 5 * 60 * 1000);
+  }, 4 * 60 * 1000);
 
   console.log('[KeepAlive] Servicio iniciado. Ping cada 5 minutos.');
 }
