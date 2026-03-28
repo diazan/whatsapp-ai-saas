@@ -33,8 +33,7 @@ const SALES_STATES = {
   CUSTOM_TIME: "SALES_CUSTOM_TIME",
   ASK_NAME: "SALES_ASK_NAME",
   COMPLETED: "SALES_COMPLETED",
-  RETURNING: "SALES_RETURNING",
-  ADVISOR: "SALES_ADVISOR"           // ✅ nuevo
+  RETURNING: "SALES_RETURNING"
 };
 
 const ESTIMATED_NO_SHOW_RATE = 0.15;
@@ -109,7 +108,7 @@ function buildShowResult(volume) {
 
   return (
     `Con aproximadamente ${volume} citas al mes,\n\n` +
-    `📉 Podrías estar perdiendo alrededor de ${lost} citas. *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
+    `📉 Podrías estar perdiendo alrededor de ${lost} citas.*Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
     `🎁 Sobre tus 30 Días GRATIS (Cupos limitados)\n\n` +
     `Dado que hacemos una instalación VIP 100% manual para asegurar que tu bot funcione perfecto, **solo abrimos 5 cupos cada mes para clínicas nuevas.**\n\n` +
     `Agendemos una breve llamada de 15 min para coordinar los accesos y asegurar tu lugar antes de que se llenen los cupos.\n\n` +
@@ -184,8 +183,7 @@ const handleSalesBotMessage = async ({
       SALES_STATES.BOOKING_TIME,
       SALES_STATES.CUSTOM_TIME,
       SALES_STATES.ASK_NAME,
-      SALES_STATES.RETURNING,
-      SALES_STATES.ADVISOR           // ✅ nuevo
+      SALES_STATES.RETURNING
     ];
 
     if (activeStates.includes(conversation.state)) {
@@ -210,11 +208,8 @@ const handleSalesBotMessage = async ({
 
   if (text === "0") {
 
-    // ✅ SOLO desde MORE_INFO o ADVISOR → volver a SHOW_RESULT
-    if (
-      conversation.state === SALES_STATES.MORE_INFO ||
-      conversation.state === SALES_STATES.ADVISOR    // ✅ nuevo
-    ) {
+    // ✅ SOLO desde MORE_INFO → volver a SHOW_RESULT
+    if (conversation.state === SALES_STATES.MORE_INFO) {
       const ctx = conversation.context;
 
       await updateConversation(conversation.id, {
@@ -345,16 +340,13 @@ const handleSalesBotMessage = async ({
         });
       }
 
-      // ✅ nuevo
+      // ✅ Opción 4 — Link directo a asesor personal
       if (text === "4") {
-        await updateConversation(conversation.id, {
-          state: SALES_STATES.ADVISOR
-        });
-
         return sendMessage(
           "💬 *Hablar con un asesor*\n\n" +
-          "Por favor escribe tu consulta y te responderemos a la brevedad 🙏\n\n" +
-          "0️⃣ Volver atrás"
+          "Haz clic en el siguiente enlace para chatear directamente con nosotros:\n\n" +
+          "https://wa.me/573183511041?text=Hola,%20quiero%20hablar%20con%20un%20asesor%20de%20Kerbo\n\n" +
+          "0️⃣ Volver al inicio"
         );
       }
 
@@ -369,27 +361,6 @@ const handleSalesBotMessage = async ({
       return sendMessage(
         buildShowResult(conversation.context.estimatedVolume)
       );
-
-    // ✅ nuevo
-    case SALES_STATES.ADVISOR: {
-
-      await evaluateSalesNotification({
-        phone: patientPhone,
-        clinic,
-        incomingMessage: message
-      }).catch(err => {
-        console.error("[salesAdvisor] Error notificando:", err.message);
-      });
-
-      await updateConversation(conversation.id, {
-        state: SALES_STATES.SHOW_RESULT
-      });
-
-      return sendMessage(
-        "✅ Tu consulta fue recibida. Un asesor te responderá a la brevedad.\n\n" +
-        buildShowResult(conversation.context.estimatedVolume)
-      );
-    }
 
     case SALES_STATES.BOOKING_DATE: {
 
