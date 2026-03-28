@@ -351,7 +351,7 @@ async function handleLocationAndHours({ clinic, sendMessage }) {
 
   const businessHours =
     clinic.businessHours ||
-    "🕐 Lunes a viernes: 8:00 AM - 5:00 PM"; +
+    "🕐 Lunes a viernes: 8:00 AM - 5:00 PM" +
     "🕐 Sábados: 8:00 AM - 11:00 AM";
 
   return sendMessage(
