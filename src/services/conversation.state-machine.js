@@ -282,8 +282,14 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     // Fase 1: placeholder — Fase 2: clinic.promotions
     const promotions =
       clinic.promotions ||
-      "🔥 Escríbenos para conocer nuestras promociones activas.\n" +
-      "¡Tenemos ofertas especiales disponibles!";
+      "🎉 Promoción del mes\n" +
+      "Limpieza dental + valoración por solo $200.000 COP\n\n"; +
+
+      "✨ Sonríe con confianza\n" +
+      "Blanqueamiento dental con 20% de descuento\n\n"; +
+
+      "⏰ Oferta especial\n" +
+      "Consulta de diagnóstico SIN COSTO al agendar esta semana\n\n";    
 
     return sendMessage(
       appendMainMenuOption(
@@ -341,11 +347,12 @@ async function handleLocationAndHours({ clinic, sendMessage }) {
   // Fase 1: placeholders — Fase 2: clinic.address + clinic.businessHours
   const address =
     clinic.address ||
-    "📍 Consulta nuestra dirección escribiendo al asesor.";
+    "Calle 5 Norte # 8N-51, Consultorio 3, Cali, Valle del Cauca";
 
   const businessHours =
     clinic.businessHours ||
-    "🕐 Lunes a viernes: 8:00 AM - 6:00 PM";
+    "🕐 Lunes a viernes: 8:00 AM - 5:00 PM"; +
+    "🕐 Sábados: 8:00 AM - 11:00 AM";
 
   return sendMessage(
     appendMainMenuOption(
