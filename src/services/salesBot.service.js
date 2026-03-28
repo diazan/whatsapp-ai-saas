@@ -27,13 +27,14 @@ const SALES_STATES = {
   PROBLEM_HOOK: "SALES_PROBLEM_HOOK",
   ASK_VOLUME: "SALES_ASK_VOLUME",
   SHOW_RESULT: "SALES_SHOW_RESULT",
-  MORE_INFO: "SALES_MORE_INFO",      // ✅ estado propio para "Más información"
+  MORE_INFO: "SALES_MORE_INFO",
   BOOKING_DATE: "SALES_BOOKING_DATE",
   BOOKING_TIME: "SALES_BOOKING_TIME",
   CUSTOM_TIME: "SALES_CUSTOM_TIME",
   ASK_NAME: "SALES_ASK_NAME",
   COMPLETED: "SALES_COMPLETED",
-  RETURNING: "SALES_RETURNING"
+  RETURNING: "SALES_RETURNING",
+  ADVISOR: "SALES_ADVISOR"           // ✅ nuevo
 };
 
 const ESTIMATED_NO_SHOW_RATE = 0.15;
@@ -108,15 +109,15 @@ function buildShowResult(volume) {
 
   return (
     `Con aproximadamente ${volume} citas al mes,\n\n` +
-    `📉 Podrías estar perdiendo alrededor de ${lost} citas.\n\n` +
-    `📈 *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
+    `📉 Podrías estar perdiendo alrededor de ${lost} citas. *Kerbo-Flow* puede ayudarte a recuperar aproximadamente ${recoverable} citas mensuales.\n\n` +
     `🎁 Sobre tus 30 Días GRATIS (Cupos limitados)\n\n` +
     `Dado que hacemos una instalación VIP 100% manual para asegurar que tu bot funcione perfecto, **solo abrimos 5 cupos cada mes para clínicas nuevas.**\n\n` +
     `Agendemos una breve llamada de 15 min para coordinar los accesos y asegurar tu lugar antes de que se llenen los cupos.\n\n` +
     `¿Cómo te gustaría avanzar?\n\n` +
     `1️⃣ Activar mes gratis\n` +
     `2️⃣ Más información\n` +
-    `3️⃣ Probar demo interactiva\n\n` +
+    `3️⃣ Probar demo interactiva\n` +
+    `4️⃣ Hablar con un asesor\n\n` +  // ✅ nuevo
     `0️⃣ Volver al inicio`
   );
 }
@@ -178,12 +179,13 @@ const handleSalesBotMessage = async ({
       SALES_STATES.PROBLEM_HOOK,
       SALES_STATES.ASK_VOLUME,
       SALES_STATES.SHOW_RESULT,
-      SALES_STATES.MORE_INFO,        // ✅ agregado
+      SALES_STATES.MORE_INFO,
       SALES_STATES.BOOKING_DATE,
       SALES_STATES.BOOKING_TIME,
       SALES_STATES.CUSTOM_TIME,
       SALES_STATES.ASK_NAME,
-      SALES_STATES.RETURNING
+      SALES_STATES.RETURNING,
+      SALES_STATES.ADVISOR           // ✅ nuevo
     ];
 
     if (activeStates.includes(conversation.state)) {
@@ -208,8 +210,11 @@ const handleSalesBotMessage = async ({
 
   if (text === "0") {
 
-    // ✅ SOLO desde MORE_INFO → volver a SHOW_RESULT
-    if (conversation.state === SALES_STATES.MORE_INFO) {
+    // ✅ SOLO desde MORE_INFO o ADVISOR → volver a SHOW_RESULT
+    if (
+      conversation.state === SALES_STATES.MORE_INFO ||
+      conversation.state === SALES_STATES.ADVISOR    // ✅ nuevo
+    ) {
       const ctx = conversation.context;
 
       await updateConversation(conversation.id, {
@@ -315,7 +320,6 @@ const handleSalesBotMessage = async ({
         );
       }
 
-      // ✅ Más información → estado propio MORE_INFO
       if (text === "2") {
         await updateConversation(conversation.id, {
           state: SALES_STATES.MORE_INFO
@@ -341,13 +345,23 @@ const handleSalesBotMessage = async ({
         });
       }
 
+      // ✅ nuevo
+      if (text === "4") {
+        await updateConversation(conversation.id, {
+          state: SALES_STATES.ADVISOR
+        });
+
+        return sendMessage(
+          "💬 *Hablar con un asesor*\n\n" +
+          "Por favor escribe tu consulta y te responderemos a la brevedad 🙏\n\n" +
+          "0️⃣ Volver atrás"
+        );
+      }
+
       return sendMessage("Elige una opción válida.");
 
-    // ✅ Estado propio para "Más información"
     case SALES_STATES.MORE_INFO:
 
-      // El "0" ya está manejado por el escape global
-      // Cualquier otro texto → volver a SHOW_RESULT
       await updateConversation(conversation.id, {
         state: SALES_STATES.SHOW_RESULT
       });
@@ -355,6 +369,27 @@ const handleSalesBotMessage = async ({
       return sendMessage(
         buildShowResult(conversation.context.estimatedVolume)
       );
+
+    // ✅ nuevo
+    case SALES_STATES.ADVISOR: {
+
+      await evaluateSalesNotification({
+        phone: patientPhone,
+        clinic,
+        incomingMessage: message
+      }).catch(err => {
+        console.error("[salesAdvisor] Error notificando:", err.message);
+      });
+
+      await updateConversation(conversation.id, {
+        state: SALES_STATES.SHOW_RESULT
+      });
+
+      return sendMessage(
+        "✅ Tu consulta fue recibida. Un asesor te responderá a la brevedad.\n\n" +
+        buildShowResult(conversation.context.estimatedVolume)
+      );
+    }
 
     case SALES_STATES.BOOKING_DATE: {
 
