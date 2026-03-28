@@ -283,10 +283,10 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     const promotions =
       clinic.promotions ||
       "🎉 Promoción del mes\n" +
-      "Limpieza dental + valoración por solo $200.000 COP\n\n"; +
+      "Limpieza dental + valoración por solo $200.000 COP\n\n" +
 
       "✨ Sonríe con confianza\n" +
-      "Blanqueamiento dental con 20% de descuento\n\n"; +
+      "Blanqueamiento dental con 20% de descuento\n\n" +
 
       "⏰ Oferta especial\n" +
       "Consulta de diagnóstico SIN COSTO al agendar esta semana\n\n";    
