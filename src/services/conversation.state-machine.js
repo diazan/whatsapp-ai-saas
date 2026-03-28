@@ -289,7 +289,7 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
       "Blanqueamiento dental con 20% de descuento\n\n" +
 
       "⏰ Oferta especial\n" +
-      "Consulta de diagnóstico SIN COSTO al agendar esta semana\n\n";    
+      "Consulta de diagnóstico SIN COSTO al agendar esta semana";    
 
     return sendMessage(
       appendMainMenuOption(
@@ -351,8 +351,8 @@ async function handleLocationAndHours({ clinic, sendMessage }) {
 
   const businessHours =
     clinic.businessHours ||
-    "🕐 Lunes a viernes: 8:00 AM - 5:00 PM" +
-    "🕐 Sábados: 8:00 AM - 11:00 AM";
+    "🕐 Lunes a viernes: 8:00 AM - 5:00 PM\n" +
+    "🕐 Sábados: 8:00 AM - 11:00 AM\n";
 
   return sendMessage(
     appendMainMenuOption(
