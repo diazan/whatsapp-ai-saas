@@ -10,7 +10,7 @@ const demoSessions = new Map();
 const DEMO_CLINIC_DATA = {
   name: "Kerbo Clínica",
   promotions:
-    "🔥 Este mes: Limpieza dental + valoración GRATIS\n" +
+    "🔥 Este mes: Limpieza dental + valoración GRATIS\n\n" +
     "⏳ Cupos limitados — ¡Agenda ya!\n\n" +
     "💎 Blanqueamiento dental con 30% de descuento",
   address:

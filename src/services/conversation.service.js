@@ -1,6 +1,7 @@
 const prisma = require("../lib/prisma");
 
 const EXPIRATION_MINUTES = 15;
+const REMINDER_EXPIRATION_MINUTES = 30;
 
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60000);
@@ -44,13 +45,13 @@ const getOrCreateConversation = async ({
   return conversation;
 };
 
-const updateConversation = async (id, data) => {
+const updateConversation = async (id, data, expirationMinutes = EXPIRATION_MINUTES) => {
   return prisma.conversation.update({
     where: { id },
     data: {
       ...data,
       lastMessageAt: new Date(),
-      expiresAt: addMinutes(new Date(), EXPIRATION_MINUTES)
+      expiresAt: addMinutes(new Date(), expirationMinutes)
     }
   });
 };
@@ -68,5 +69,6 @@ const closeConversation = async (id, finalState) => {
 module.exports = {
   getOrCreateConversation,
   updateConversation,
-  closeConversation
+  closeConversation,
+  REMINDER_EXPIRATION_MINUTES
 };
