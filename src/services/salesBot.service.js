@@ -345,7 +345,7 @@ const handleSalesBotMessage = async ({
         return sendMessage(
           "💬 *Hablar con un asesor*\n\n" +
           "Haz clic en el siguiente enlace para chatear directamente con nosotros:\n\n" +
-          "https://wa.me/573183511041?text=Hola,%20quiero%20hablar%20con%20un%20asesor%20de%20Kerbo\n\n" +
+          "https://wa.me/573137646472?text=Hola,%20quiero%20hablar%20con%20un%20asesor%20de%20Kerbo\n\n" +
           "0️⃣ Volver al inicio"
         );
       }
