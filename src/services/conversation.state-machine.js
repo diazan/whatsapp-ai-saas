@@ -271,7 +271,7 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
   // ✅ Opción 3 — Promociones
   // DESPUÉS
   if (text === "3") {
-    const promotions = clinic.promotions;
+    const promotions = clinic.promotions ? clinic.promotions.replace(/\\n/g, "\n") : null;
 
     if (!promotions) {
       return sendMessage(
@@ -330,15 +330,16 @@ async function handleCustomSection({ clinic, sendMessage }) {
     );
   }
 
+  const contentFormatted = content.replace(/\\n/g, "\n");
   return sendMessage(
-    appendMainMenuOption(`⭐ *${title}*\n\n${content}`)
+    appendMainMenuOption(`⭐ *${title}*\n\n${contentFormatted}`)
   );
 }
 
 // DESPUÉS
 async function handleLocationAndHours({ clinic, sendMessage }) {
-  const address = clinic.address;
-  const businessHours = clinic.businessHours;
+  const address = clinic.address ? clinic.address.replace(/\\n/g, "\n") : null;
+  const businessHours = clinic.businessHours ? clinic.businessHours.replace(/\\n/g, "\n") : null;
 
   if (!address && !businessHours) {
     return sendMessage(

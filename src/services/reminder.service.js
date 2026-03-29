@@ -1,10 +1,8 @@
-const { PrismaClient } = require("@prisma/client");
 const { DateTime } = require("luxon");
 const { sendWhatsAppMessage } = require("./whatsappService");
 const { getOrCreateConversation, updateConversation } = require("./conversation.service");
+const prisma = require("../lib/prisma");
 
-
-const prisma = new PrismaClient();
 
 const REMINDER_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
