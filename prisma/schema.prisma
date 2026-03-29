@@ -22,7 +22,10 @@ model Clinic {
   address             String?
   businessHours       String?
   promotions          String?
-  showTestimonials    Boolean            @default(true)
+  advisorWhatsappLink  String?
+  showCustomSection      Boolean  @default(true)
+  customSectionTitle     String?
+  customSectionContent   String?
   appointments        Appointment[]
   schedules           ClinicSchedule[]
   conversations       Conversation[]

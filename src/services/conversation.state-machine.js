@@ -12,16 +12,6 @@ const BOOKING_KEYWORDS = ["cita", "turno", "agendar", "reservar"];
 
 const { handleSalesBot } = require("./salesBot.service");
 
-// ✅ Testimonios hardcodeados — Fase 1
-// En Fase 2: vendrán de DB + respetarán clinic.showTestimonials
-const TESTIMONIALS = [
-  { text: "Excelente atención, todo fue muy rápido y profesional.", author: "María G." },
-  { text: "Agendé por WhatsApp y fue súper fácil. 100% recomendado.", author: "Carlos R." },
-  { text: "Me atendieron el mismo día. Muy amables y puntuales.", author: "Laura M." }
-];
-
-// ✅ Control de visibilidad — Fase 2: vendrá de clinic.showTestimonials
-const SHOW_TESTIMONIALS = true;
 
 // ─────────────────────────────────────────────
 // ENTRY POINT
@@ -177,8 +167,10 @@ const handleIncomingMessage = async ({
 // BUILDERS
 // ─────────────────────────────────────────────
 
+// DESPUÉS
 function buildMainMenu(clinic) {
   const name = clinic.name || "nuestra clínica";
+  const sectionTitle = clinic.customSectionTitle || "Sección especial";
 
   let menu =
     `👋 Hola, soy el asistente virtual de *${name}*\n\n` +
@@ -187,8 +179,8 @@ function buildMainMenu(clinic) {
     `2️⃣ 🦷 Nuestros servicios\n` +
     `3️⃣ 🔥 Promociones activas\n`;
 
-  if (SHOW_TESTIMONIALS) {
-    menu += `4️⃣ ⭐ Testimonios de pacientes\n`;
+  if (clinic.showCustomSection) {
+    menu += `4️⃣ ⭐ ${sectionTitle}\n`;
     menu += `5️⃣ 📍 Ubicación y horarios\n`;
     menu += `6️⃣ 💬 Hablar con un asesor\n`;
   } else {
@@ -197,7 +189,6 @@ function buildMainMenu(clinic) {
   }
 
   menu += `\n✨ Agenda tu cita en menos de 2 minutos`;
-
   return menu;
 }
 
@@ -224,7 +215,7 @@ function appendMainMenuOption(text) {
 async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
   // ✅ Determinar opciones válidas según SHOW_TESTIMONIALS
-  const validOptions = SHOW_TESTIMONIALS
+  const validOptions = clinic.showCustomSection
     ? ["1", "2", "3", "4", "5", "6"]
     : ["1", "2", "3", "4", "5"];
 
@@ -278,47 +269,45 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
   }
 
   // ✅ Opción 3 — Promociones
+  // DESPUÉS
   if (text === "3") {
-    // Fase 1: placeholder — Fase 2: clinic.promotions
-    const promotions =
-      clinic.promotions ||
-      "🎉 Promoción del mes\n" +
-      "Limpieza dental + valoración por solo $200.000 COP\n\n" +
+    const promotions = clinic.promotions;
 
-      "✨ Sonríe con confianza\n" +
-      "Blanqueamiento dental con 20% de descuento\n\n" +
-
-      "⏰ Oferta especial\n" +
-      "Consulta de diagnóstico SIN COSTO al agendar esta semana";    
+    if (!promotions) {
+      return sendMessage(
+        appendMainMenuOption(
+          `🔥 *Promociones activas*\n\n` +
+          `No hay promociones activas en este momento.\n` +
+          `¡Contáctanos para más información!`
+        )
+      );
+    }
 
     return sendMessage(
-      appendMainMenuOption(
-        `🔥 *Promociones activas*\n\n${promotions}`
-      )
+      appendMainMenuOption(`🔥 *Promociones activas*\n\n${promotions}`)
     );
   }
 
   // ✅ Opción 4 — Testimonios (si está activo) o Ubicación
+  // DESPUÉS
   if (text === "4") {
-    if (SHOW_TESTIMONIALS) {
-      return handleTestimonials({ conversation, sendMessage });
+    if (clinic.showCustomSection) {
+      return handleCustomSection({ clinic, sendMessage });
     } else {
       return handleLocationAndHours({ clinic, sendMessage });
     }
   }
 
-  // ✅ Opción 5 — Ubicación y horarios (si testimonios activo) o Asesor
   if (text === "5") {
-    if (SHOW_TESTIMONIALS) {
+    if (clinic.showCustomSection) {
       return handleLocationAndHours({ clinic, sendMessage });
     } else {
-      return handleStartAdvisor({ conversation, sendMessage });
+      return handleStartAdvisor({ clinic, conversation, sendMessage });
     }
   }
 
-  // ✅ Opción 6 — Hablar con asesor (solo si testimonios activo)
-  if (text === "6" && SHOW_TESTIMONIALS) {
-    return handleStartAdvisor({ conversation, sendMessage });
+  if (text === "6" && clinic.showCustomSection) {
+    return handleStartAdvisor({ clinic, conversation, sendMessage });
   }
 }
 
@@ -326,46 +315,77 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
 // HANDLERS — NUEVAS OPCIONES
 // ─────────────────────────────────────────────
 
-async function handleTestimonials({ conversation, sendMessage }) {
+// ELIMINAR handleTestimonials por completo y reemplazar con:
 
-  let response = `⭐ *Testimonios de nuestros pacientes*\n\n`;
+async function handleCustomSection({ clinic, sendMessage }) {
+  const title = clinic.customSectionTitle || "Información adicional";
+  const content = clinic.customSectionContent;
 
-  TESTIMONIALS.forEach((t) => {
-    response += `💬 _"${t.text}"_\n`;
-    response += `— ${t.author}\n\n`;
-  });
-
-  response += `¿Listo para tu cita?`;
+  if (!content) {
+    return sendMessage(
+      appendMainMenuOption(
+        `⭐ *${title}*\n\n` +
+        `No hay información disponible en este momento.`
+      )
+    );
+  }
 
   return sendMessage(
-    appendMainMenuOption(response)
+    appendMainMenuOption(`⭐ *${title}*\n\n${content}`)
   );
 }
 
+// DESPUÉS
 async function handleLocationAndHours({ clinic, sendMessage }) {
+  const address = clinic.address;
+  const businessHours = clinic.businessHours;
 
-  // Fase 1: placeholders — Fase 2: clinic.address + clinic.businessHours
-  const address =
-    clinic.address ||
-    "Calle 5 Norte # 8N-51, Consultorio 3, Cali, Valle del Cauca";
+  if (!address && !businessHours) {
+    return sendMessage(
+      appendMainMenuOption(
+        `📍 *Ubicación y horarios*\n\n` +
+        `Información no disponible.\n` +
+        `Contáctanos directamente para conocer nuestra ubicación y horarios.`
+      )
+    );
+  }
 
-  const businessHours =
-    clinic.businessHours ||
-    "🕐 Lunes a viernes: 8:00 AM - 5:00 PM\n" +
-    "🕐 Sábados: 8:00 AM - 11:00 AM\n";
+  let response = `📍 *Ubicación y horarios*\n\n`;
 
-  return sendMessage(
-    appendMainMenuOption(
-      `📍 *Ubicación y horarios*\n\n` +
-      `${address}\n\n` +
-      `🕐 *Horarios de atención*\n` +
-      `${businessHours}`
-    )
-  );
+  if (address) response += `${address}\n\n`;
+
+  if (businessHours) {
+    response += `🕐 *Horarios de atención*\n${businessHours}`;
+  }
+
+  return sendMessage(appendMainMenuOption(response));
 }
 
-async function handleStartAdvisor({ conversation, sendMessage }) {
+// DESPUÉS
+async function handleStartAdvisor({ clinic, conversation, sendMessage }) {
 
+  // ✅ Si hay link configurado → mostrar link con mensaje precargado
+  if (clinic.advisorWhatsappLink) {
+    const clinicName = encodeURIComponent(clinic.name || "la clínica");
+    const preloadedText = encodeURIComponent(
+      `Hola, me comunico desde el bot de ${clinic.name || "la clínica"}. Quisiera hablar con un asesor.`
+    );
+
+    const fullLink = clinic.advisorWhatsappLink.includes("?")
+      ? `${clinic.advisorWhatsappLink}&text=${preloadedText}`
+      : `${clinic.advisorWhatsappLink}?text=${preloadedText}`;
+
+    return sendMessage(
+      appendMainMenuOption(
+        `💬 *Hablar con un asesor*\n\n` +
+        `Haz clic en el siguiente enlace para chatear directamente con nosotros:\n\n` +
+        `${fullLink}\n\n` +
+        `¡Te atenderemos a la brevedad! 🙏`
+      )
+    );
+  }
+
+  // ✅ Fallback — flujo conversacional si no hay link configurado
   await updateConversation(conversation.id, {
     state: "WAITING_ADVISOR_QUESTION",
     context: {}
