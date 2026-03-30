@@ -169,6 +169,9 @@ const handleIncomingMessage = async ({
 
 // DESPUÉS
 function buildMainMenu(clinic) {
+  console.log("🏥 buildMainMenu clinic.showCustomSection:", clinic.showCustomSection);
+  console.log("🏥 buildMainMenu clinic.customSectionTitle:", clinic.customSectionTitle);
+  console.log("🏥 typeof showCustomSection:", typeof clinic.showCustomSection);
   const name = clinic.name || "nuestra clínica";
   const sectionTitle = clinic.customSectionTitle || "Sección especial";
 
