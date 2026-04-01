@@ -112,3 +112,9 @@ model SalesDemoRequest {
   @@index([clinicId])
   @@index([status])
 }
+
+model BotEvent {
+  id        Int      @id @default(autoincrement())
+  event     String
+  createdAt DateTime @default(now())
+}

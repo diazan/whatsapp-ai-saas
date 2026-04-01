@@ -99,6 +99,17 @@ function capitalizeName(name) {
 }
 
 // ─────────────────────────────────────────────
+// HELPER — Registrar evento de embudo
+// ─────────────────────────────────────────────
+async function trackEvent(event) {
+  try {
+    await prisma.botEvent.create({ data: { event } });
+  } catch (err) {
+    console.error("[trackEvent] Error:", err.message);
+  }
+}
+
+// ─────────────────────────────────────────────
 // BUILDER — SHOW_RESULT
 // ─────────────────────────────────────────────
 
@@ -273,6 +284,7 @@ const handleSalesBotMessage = async ({
     case SALES_STATES.PROBLEM_HOOK:
 
       if (text === "1") {
+        await trackEvent("si_muestrame"); // ✅ CONTADOR
         await updateConversation(conversation.id, {
           state: SALES_STATES.ASK_VOLUME
         });
@@ -293,6 +305,7 @@ const handleSalesBotMessage = async ({
       const volume = getVolumeFromOption(text);
       if (!volume) return sendMessage("Por favor elige una opción válida.");
 
+      await trackEvent(`citas_opcion_${text}`); // ✅ CONTADOR → citas_opcion_1 / 2 / 3
       await updateConversation(conversation.id, {
         state: SALES_STATES.SHOW_RESULT,
         context: {
@@ -306,6 +319,7 @@ const handleSalesBotMessage = async ({
     case SALES_STATES.SHOW_RESULT:
 
       if (text === "1") {
+        await trackEvent("activar_mes_gratis"); // ✅ CONTADOR
         await updateConversation(conversation.id, {
           state: SALES_STATES.BOOKING_DATE
         });
@@ -316,6 +330,7 @@ const handleSalesBotMessage = async ({
       }
 
       if (text === "2") {
+        await trackEvent("mas_informacion"); // ✅ CONTADOR
         await updateConversation(conversation.id, {
           state: SALES_STATES.MORE_INFO
         });
@@ -332,6 +347,7 @@ const handleSalesBotMessage = async ({
       }
 
       if (text === "3") {
+        await trackEvent("probar_demo"); // ✅ CONTADOR
         return handleDemoMessage({
           clinic,
           message: "__start__",
@@ -342,6 +358,7 @@ const handleSalesBotMessage = async ({
 
       // ✅ Opción 4 — Link directo a asesor personal
       if (text === "4") {
+        await trackEvent("hablar_asesor"); // ✅ CONTADOR
         return sendMessage(
           "💬 *Hablar con un asesor*\n\n" +
           "Haz clic en el siguiente enlace para chatear directamente con nosotros:\n\n" +
