@@ -127,7 +127,7 @@ function buildShowResult(volume) {
     `1️⃣ Activar mes gratis\n` +
     `2️⃣ Más información\n` +
     `3️⃣ Probar demo interactiva\n` +
-    `4️⃣ Hablar con un asesor\n\n` +  // ✅ nuevo
+    `4️⃣ Asesoría para implementar\n\n` +  // ✅ nuevo
     `0️⃣ Volver al inicio`
   );
 }
