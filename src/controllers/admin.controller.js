@@ -176,7 +176,7 @@ const sendSalesMeetLink = async (req, res) => {
 
     // 🎯 USAR PHONENUMBERID REAL PARA USUARIO DE VENTAS
     const sendingPhoneNumberId = isSalesUser
-      ? "993943513813000"
+      ? "1022680704267715"
       : clinic.phoneNumberId;
 
     console.log("🔧 SALES DEBUG:", {
