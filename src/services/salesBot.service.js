@@ -101,9 +101,13 @@ function capitalizeName(name) {
 // ─────────────────────────────────────────────
 // HELPER — Registrar evento de embudo
 // ─────────────────────────────────────────────
-async function trackEvent(event) {
+async function trackEvent(event, phone) {
   try {
-    await prisma.botEvent.create({ data: { event } });
+    await prisma.botEvent.upsert({
+      where: { event_phone: { event, phone } },
+      update: {},      // si ya existe, no hace nada
+      create: { event, phone }
+    });
   } catch (err) {
     console.error("[trackEvent] Error:", err.message);
   }
@@ -127,7 +131,7 @@ function buildShowResult(volume) {
     `1️⃣ Activar mes gratis\n` +
     `2️⃣ Más información\n` +
     `3️⃣ Probar demo interactiva\n` +
-    `4️⃣ Asesoría para implementar\n\n` +  // ✅ nuevo
+    `4️⃣ Asesoría para implementación\n\n` +  // ✅ nuevo
     `0️⃣ Volver al inicio`
   );
 }
@@ -284,7 +288,7 @@ const handleSalesBotMessage = async ({
     case SALES_STATES.PROBLEM_HOOK:
 
       if (text === "1") {
-        await trackEvent("si_muestrame"); // ✅ CONTADOR
+        await trackEvent("si_muestrame", patientPhone); // ✅ CONTADOR
         await updateConversation(conversation.id, {
           state: SALES_STATES.ASK_VOLUME
         });
@@ -305,7 +309,7 @@ const handleSalesBotMessage = async ({
       const volume = getVolumeFromOption(text);
       if (!volume) return sendMessage("Por favor elige una opción válida.");
 
-      await trackEvent(`citas_opcion_${text}`); // ✅ CONTADOR → citas_opcion_1 / 2 / 3
+      await trackEvent(`citas_opcion_${text}`, patientPhone); // ✅ CONTADOR → citas_opcion_1 / 2 / 3
       await updateConversation(conversation.id, {
         state: SALES_STATES.SHOW_RESULT,
         context: {
@@ -319,7 +323,7 @@ const handleSalesBotMessage = async ({
     case SALES_STATES.SHOW_RESULT:
 
       if (text === "1") {
-        await trackEvent("activar_mes_gratis"); // ✅ CONTADOR
+        await trackEvent("activar_mes_gratis", patientPhone); // ✅ CONTADOR
         await updateConversation(conversation.id, {
           state: SALES_STATES.BOOKING_DATE
         });
@@ -330,7 +334,7 @@ const handleSalesBotMessage = async ({
       }
 
       if (text === "2") {
-        await trackEvent("mas_informacion"); // ✅ CONTADOR
+        await trackEvent("mas_informacion", patientPhone); // ✅ CONTADOR
         await updateConversation(conversation.id, {
           state: SALES_STATES.MORE_INFO
         });
@@ -347,7 +351,7 @@ const handleSalesBotMessage = async ({
       }
 
       if (text === "3") {
-        await trackEvent("probar_demo"); // ✅ CONTADOR
+        await trackEvent("probar_demo", patientPhone); // ✅ CONTADOR
         return handleDemoMessage({
           clinic,
           message: "__start__",
@@ -358,7 +362,7 @@ const handleSalesBotMessage = async ({
 
       // ✅ Opción 4 — Link directo a asesor personal
       if (text === "4") {
-        await trackEvent("hablar_asesor"); // ✅ CONTADOR
+        await trackEvent("hablar_asesor", patientPhone); // ✅ CONTADOR
         return sendMessage(
           "💬 *Hablar con un asesor*\n\n" +
           "Haz clic en el siguiente enlace para chatear directamente con nosotros:\n\n" +

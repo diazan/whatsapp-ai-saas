@@ -116,5 +116,8 @@ model SalesDemoRequest {
 model BotEvent {
   id        Int      @id @default(autoincrement())
   event     String
+  phone     String
   createdAt DateTime @default(now())
+
+  @@unique([event, phone])
 }
