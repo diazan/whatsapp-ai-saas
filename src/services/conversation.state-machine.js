@@ -86,7 +86,7 @@ const handleIncomingMessage = async ({
       context: {}
     });
 
-    return sendMessage(buildMainMenu(clinic));
+    return sendMessage(await buildMainMenu(clinic));
   }
 
   // ✅ Saludo inicial
@@ -96,7 +96,7 @@ const handleIncomingMessage = async ({
       context: {}
     });
 
-    return sendMessage(buildMainMenu(clinic));
+    return sendMessage(await buildMainMenu(clinic));
   }
 
   // ✅ Reinicio forzado si escribe keyword de booking
@@ -116,6 +116,21 @@ const handleIncomingMessage = async ({
 
     case "WAITING_SUBMENU_CITAS":
       return handleSubmenuCitas({ text, clinic, conversation, sendMessage });
+
+    case "WAITING_INFO_REQUEST_MESSAGE":
+      return handleInfoRequestMessage({ text, conversation, sendMessage });
+
+    case "WAITING_INFO_REQUEST_NAME":
+      return handleInfoRequestName({ text, conversation, sendMessage });
+    
+    case "WAITING_INFO_REQUEST_CONTACT":
+      return handleInfoRequestContact({
+        text,
+        clinic,
+        conversation,
+        patientPhone,
+        sendMessage
+      });
 
     case "WAITING_SERVICE":
       return handleServiceSelection({ text, clinic, conversation, sendMessage });
@@ -168,32 +183,70 @@ const handleIncomingMessage = async ({
 // ─────────────────────────────────────────────
 
 // DESPUÉS
-function buildMainMenu(clinic) {
-  console.log("🏥 buildMainMenu clinic.showCustomSection:", clinic.showCustomSection);
-  console.log("🏥 buildMainMenu clinic.customSectionTitle:", clinic.customSectionTitle);
-  console.log("🏥 typeof showCustomSection:", typeof clinic.showCustomSection);
-  const name = clinic.name || "nuestra clínica";
-  const sectionTitle = clinic.customSectionTitle || "Sección especial";
+  async function buildMainMenu(clinic) {
+    const name = clinic.name || "nuestra clínica";
 
-  let menu =
-    `👋 Hola, soy el asistente virtual de *${name}*\n\n` +
-    `¿En qué puedo ayudarte hoy?\n\n` +
-    `1️⃣ 📅 Citas\n` +
-    `2️⃣ 🦷 Nuestros servicios\n` +
-    `3️⃣ 🔥 Promociones activas\n`;
+    // Consultar servicios para saber si mostrar botón 2
+    const services = await prisma.service.findMany({
+      where: { clinicId: clinic.id, active: true }
+    });
+    const hasServices = services.length > 0;
 
-  if (clinic.showCustomSection) {
-    menu += `4️⃣ ⭐ ${sectionTitle}\n`;
-    menu += `5️⃣ 📍 Ubicación y horarios\n`;
-    menu += `6️⃣ 💬 Hablar con un asesor\n`;
-  } else {
-    menu += `4️⃣ 📍 Ubicación y horarios\n`;
-    menu += `5️⃣ 💬 Hablar con un asesor\n`;
+    // Títulos personalizables con defaults
+    const infoRequestTitle = clinic.infoRequestTitle || "Solicitar información";
+    const servicesTitle    = clinic.servicesTitle    || "🦷 Nuestros servicios";
+    const promotionsTitle  = clinic.promotionsTitle  || "Promociones activas";
+    const customTitle      = clinic.customSectionTitle || "Sección especial";
+    const locationTitle    = clinic.locationTitle    || "Ubicación y horarios";
+    const advisorTitle     = clinic.advisorTitle     || "Hablar con un asesor";
+
+    let menu =
+      `👋 Hola, soy el asistente virtual de *${name}*\n\n` +
+      `¿En qué puedo ayudarte hoy?\n\n`;
+
+    let n = 1;
+
+    // Botón 1 — siempre visible, comportamiento variable
+    if (clinic.hideBooking) {
+        menu += `${n}️⃣ ❓ ${infoRequestTitle}\n`;
+      //menu += `${n}️⃣ 📋 ${infoRequestTitle}\n`; emoji primer menu
+    } else {
+      menu += `${n}️⃣ 📅 Citas\n`;
+    }
+    n++;
+
+    // Botón 2 — solo si tiene servicios
+    if (hasServices) {
+      menu += `${n}️⃣ ${servicesTitle}\n`;
+      n++;
+    }
+
+    // Botón 3 — Promociones
+    menu += `${n}️⃣ 🔥 ${promotionsTitle}\n`;
+    n++;
+
+    // Botón 4 — Sección custom (si está activa)
+    if (clinic.showCustomSection) {
+      menu += `${n}️⃣ ⭐ ${customTitle}\n`;
+      n++;
+    }
+
+    // Botón 5 — Ubicación
+    menu += `${n}️⃣ 📍 ${locationTitle}\n`;
+    n++;
+
+    // Botón 6 — Asesor (si está activo)
+    if (clinic.showAdvisor) {
+      menu += `${n}️⃣ 💬 ${advisorTitle}\n`;
+      n++;
+    }
+
+    if (!clinic.hideBooking) {
+      menu += `\n✨ Agenda tu cita en menos de 2 minutos`;
+    }
+
+    return menu;
   }
-
-  menu += `\n✨ Agenda tu cita en menos de 2 minutos`;
-  return menu;
-}
 
 function buildSubmenuCitas() {
   return (
@@ -217,99 +270,82 @@ function appendMainMenuOption(text) {
 
 async function handleIdle({ text, clinic, conversation, sendMessage }) {
 
-  // ✅ Determinar opciones válidas según SHOW_TESTIMONIALS
-  const validOptions = clinic.showCustomSection
-    ? ["1", "2", "3", "4", "5", "6"]
-    : ["1", "2", "3", "4", "5"];
+  // Calcular opciones disponibles dinámicamente
+  const services = await prisma.service.findMany({
+    where: { clinicId: clinic.id, active: true }
+  });
+  const hasServices = services.length > 0;
 
-  if (!validOptions.includes(text)) {
-    return sendMessage(buildMainMenu(clinic));
+  // Construir mapa de opción → acción
+  const menuMap = {};
+  let n = 1;
+
+  menuMap[String(n++)] = clinic.hideBooking ? "INFO_REQUEST" : "CITAS";
+  if (hasServices) menuMap[String(n++)] = "SERVICIOS";
+  menuMap[String(n++)] = "PROMOCIONES";
+  if (clinic.showCustomSection) menuMap[String(n++)] = "CUSTOM";
+  menuMap[String(n++)] = "UBICACION";
+  if (clinic.showAdvisor) menuMap[String(n++)] = "ASESOR";
+
+  const action = menuMap[text];
+
+  if (!action) {
+    return sendMessage(await buildMainMenu(clinic));
   }
 
-  // ✅ Opción 1 — Citas (submenú)
-  if (text === "1") {
+  if (action === "INFO_REQUEST") {
+    return handleStartInfoRequest({ clinic, conversation, sendMessage });
+  }
+
+  if (action === "CITAS") {
     await updateConversation(conversation.id, {
       state: "WAITING_SUBMENU_CITAS",
       context: {}
     });
-
     return sendMessage(buildSubmenuCitas());
   }
 
-  // ✅ Opción 2 — Ver servicios
-  if (text === "2") {
-    const services = await prisma.service.findMany({
-      where: {
-        clinicId: clinic.id,
-        active: true
-      },
-      orderBy: { displayOrder: "asc" }
-    });
-
-    if (!services.length) {
-      return sendMessage(
-        appendMainMenuOption(
-          "🦷 Actualmente no tenemos servicios registrados.\n" +
-          "Contáctanos para más información."
-        )
-      );
-    }
-
+  if (action === "SERVICIOS") {
+    const title = clinic.servicesTitle || "🦷 Nuestros servicios";
     let response = `🦷 *Nuestros servicios*\n\n`;
-    services.forEach((service) => {
+    services.forEach(service => {
       response += `• ${service.name}`;
-      if (service.durationMin) {
-        response += ` (${service.durationMin} min)`;
-      }
+      if (service.durationMin) response += ` (${service.durationMin} min)`;
       response += `\n`;
     });
-
-    response += `\n¿Te gustaría agendar alguno?`;
-
-    return sendMessage(
-      appendMainMenuOption(response)
-    );
+    response += `\n¡Pregunta por cualquiera de nuestros servicios ahora mismo!`;
+    return sendMessage(appendMainMenuOption(response));
   }
 
-  // ✅ Opción 3 — Promociones
-  // DESPUÉS
-  if (text === "3") {
-    const promotions = clinic.promotions ? clinic.promotions.replace(/\\n/g, "\n") : null;
+  if (action === "PROMOCIONES") {
+    const title = clinic.promotionsTitle || "Promociones activas";
+    const promotions = clinic.promotions
+      ? clinic.promotions.replace(/\\n/g, "\n")
+      : null;
 
     if (!promotions) {
       return sendMessage(
         appendMainMenuOption(
-          `🔥 *Promociones activas*\n\n` +
+          `🔥 *${title}*\n\n` +
           `No hay promociones activas en este momento.\n` +
           `¡Contáctanos para más información!`
         )
       );
     }
-
     return sendMessage(
-      appendMainMenuOption(`🔥 *Promociones activas*\n\n${promotions}`)
+      appendMainMenuOption(`🔥 *${title}*\n\n${promotions}`)
     );
   }
 
-  // ✅ Opción 4 — Testimonios (si está activo) o Ubicación
-  // DESPUÉS
-  if (text === "4") {
-    if (clinic.showCustomSection) {
-      return handleCustomSection({ clinic, sendMessage });
-    } else {
-      return handleLocationAndHours({ clinic, sendMessage });
-    }
+  if (action === "CUSTOM") {
+    return handleCustomSection({ clinic, sendMessage });
   }
 
-  if (text === "5") {
-    if (clinic.showCustomSection) {
-      return handleLocationAndHours({ clinic, sendMessage });
-    } else {
-      return handleStartAdvisor({ clinic, conversation, sendMessage });
-    }
+  if (action === "UBICACION") {
+    return handleLocationAndHours({ clinic, sendMessage });
   }
 
-  if (text === "6" && clinic.showCustomSection) {
+  if (action === "ASESOR") {
     return handleStartAdvisor({ clinic, conversation, sendMessage });
   }
 }
@@ -341,47 +377,56 @@ async function handleCustomSection({ clinic, sendMessage }) {
 
 // DESPUÉS
 async function handleLocationAndHours({ clinic, sendMessage }) {
-  const address = clinic.address ? clinic.address.replace(/\\n/g, "\n") : null;
-  const businessHours = clinic.businessHours ? clinic.businessHours.replace(/\\n/g, "\n") : null;
+  const title = clinic.locationTitle || "Ubicación y horarios";
+
+  // ✅ Prioridad: locationContent (texto libre)
+  if (clinic.locationContent) {
+    const content = clinic.locationContent.replace(/\\n/g, "\n");
+    return sendMessage(
+      appendMainMenuOption(`📍 *${title}*\n\n${content}`)
+    );
+  }
+
+  // ✅ Fallback: address + businessHours (comportamiento actual)
+  const address = clinic.address
+    ? clinic.address.replace(/\\n/g, "\n")
+    : null;
+  const businessHours = clinic.businessHours
+    ? clinic.businessHours.replace(/\\n/g, "\n")
+    : null;
 
   if (!address && !businessHours) {
     return sendMessage(
       appendMainMenuOption(
-        `📍 *Ubicación y horarios*\n\n` +
+        `📍 *${title}*\n\n` +
         `Información no disponible.\n` +
         `Contáctanos directamente para conocer nuestra ubicación y horarios.`
       )
     );
   }
 
-  let response = `📍 *Ubicación y horarios*\n\n`;
-
+  let response = `📍 *${title}*\n\n`;
   if (address) response += `${address}\n\n`;
-
-  if (businessHours) {
-    response += `🕐 *Horarios de atención*\n${businessHours}`;
-  }
+  if (businessHours) response += `🕐 *Horarios de atención*\n${businessHours}`;
 
   return sendMessage(appendMainMenuOption(response));
 }
 
 // DESPUÉS
 async function handleStartAdvisor({ clinic, conversation, sendMessage }) {
+  const title = clinic.advisorTitle || "Hablar con un asesor";
 
-  // ✅ Si hay link configurado → mostrar link con mensaje precargado
   if (clinic.advisorWhatsappLink) {
-    const clinicName = encodeURIComponent(clinic.name || "la clínica");
     const preloadedText = encodeURIComponent(
       `Hola, me comunico desde el bot de ${clinic.name || "la clínica"}. Quisiera hablar con un asesor.`
     );
-
     const fullLink = clinic.advisorWhatsappLink.includes("?")
       ? `${clinic.advisorWhatsappLink}&text=${preloadedText}`
       : `${clinic.advisorWhatsappLink}?text=${preloadedText}`;
 
     return sendMessage(
       appendMainMenuOption(
-        `💬 *Hablar con un asesor*\n\n` +
+        `💬 *${title}*\n\n` +
         `Haz clic en el siguiente enlace para chatear directamente con nosotros:\n\n` +
         `${fullLink}\n\n` +
         `¡Te atenderemos a la brevedad! 🙏`
@@ -389,7 +434,6 @@ async function handleStartAdvisor({ clinic, conversation, sendMessage }) {
     );
   }
 
-  // ✅ Fallback — flujo conversacional si no hay link configurado
   await updateConversation(conversation.id, {
     state: "WAITING_ADVISOR_QUESTION",
     context: {}
@@ -397,7 +441,7 @@ async function handleStartAdvisor({ clinic, conversation, sendMessage }) {
 
   return sendMessage(
     appendMainMenuOption(
-      `💬 *Hablar con un asesor*\n\n` +
+      `💬 *${title}*\n\n` +
       `Por favor escribe tu consulta y la enviaremos a nuestro equipo.\n\n` +
       `Te responderemos a la brevedad 🙏`
     )
@@ -1328,6 +1372,105 @@ async function handleReminderResponse({ text, clinic, conversation, sendMessage 
     "Por favor responde:\n\n" +
     "1️⃣ Confirmar asistencia\n" +
     "2️⃣ Cancelar cita"
+  );
+}
+
+// ─────────────────────────────────────────────
+// HANDLERS — SOLICITAR INFORMACIÓN
+// ─────────────────────────────────────────────
+
+async function handleStartInfoRequest({ clinic, conversation, sendMessage }) {
+  const title = clinic.infoRequestTitle || "Solicitar información";
+
+  await updateConversation(conversation.id, {
+    state: "WAITING_INFO_REQUEST_MESSAGE",
+    context: {}
+  });
+
+  return sendMessage(
+    appendMainMenuOption(
+      `📋 *${title}*\n\n` +
+      `¡Genial! 👋 Cuéntanos qué necesitas y te ayudamos lo antes posible 👇`
+    )
+  );
+}
+
+async function handleInfoRequestMessage({ text, conversation, sendMessage }) {
+  await updateConversation(conversation.id, {
+    state: "WAITING_INFO_REQUEST_NAME",
+    context: {
+      ...conversation.context,
+      infoMessage: text.trim()
+    }
+  });
+
+  return sendMessage(
+    appendMainMenuOption(`Perfecto 👍 ¿Cuál es tu nombre?`)
+  );
+}
+
+async function handleInfoRequestName({ text, conversation, sendMessage }) {
+  await updateConversation(conversation.id, {
+    state: "WAITING_INFO_REQUEST_CONTACT",
+    context: {
+      ...conversation.context,
+      infoName: capitalizeName(text.trim())
+    }
+  });
+
+  return sendMessage(
+    appendMainMenuOption(
+      `¿A qué número o medio prefieres que te contacten?`
+    )
+  );
+}
+
+async function handleInfoRequestContact({
+  text,
+  clinic,
+  conversation,
+  patientPhone,
+  sendMessage
+}) {
+  const { infoMessage, infoName } = conversation.context;
+  const title = clinic.infoRequestTitle || "Solicitar información";
+
+  // ✅ Notificar al admin usando sendWhatsAppMessage (mismo patrón del sistema)
+  if (clinic.adminPhone) {
+    const { sendWhatsAppMessage } = require("./whatsappService");
+
+    const notification =
+      `📋 *Nueva solicitud: ${title}*\n\n` +
+      `👤 Nombre: ${infoName}\n` +
+      `📱 WhatsApp: ${patientPhone}\n` +
+      `📞 Contacto preferido: ${text.trim()}\n\n` +
+      `💬 Mensaje:\n${infoMessage}`;
+
+    const result = await sendWhatsAppMessage({
+      accessToken: clinic.accessToken,
+      phoneNumberId: clinic.phoneNumberId,
+      to: clinic.adminPhone.trim(),
+      message: notification
+    });
+
+    if (!result.success) {
+      console.error("❌ Error notificando admin info-request:", result.error);
+    } else {
+      console.log("✅ Notificación info-request enviada al admin:", clinic.adminPhone);
+    }
+  }
+
+  await updateConversation(conversation.id, {
+    state: "IDLE",
+    context: {}
+  });
+
+  return sendMessage(
+    appendMainMenuOption(
+      `✅ ¡Listo! Recibimos tu solicitud.\n\n` +
+      `Nos pondremos en contacto contigo a la brevedad.\n\n` +
+      `¿Hay algo más en lo que pueda ayudarte?`
+    )
   );
 }
 

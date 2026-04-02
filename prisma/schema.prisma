@@ -22,11 +22,19 @@ model Clinic {
   address             String?
   businessHours       String?
   promotions          String?
+  servicesTitle       String?
   advisorWhatsappLink  String?
+  hideBooking          Boolean  @default(false)
+  infoRequestTitle     String?
+  showAdvisor          Boolean  @default(true)
+  advisorTitle         String?
+  promotionsTitle      String?
+  locationTitle        String?
+  locationContent      String?
   showCustomSection      Boolean  @default(true)
   customSectionTitle     String?
   customSectionContent   String?
-  appointments        Appointment[]
+    appointments        Appointment[]
   schedules           ClinicSchedule[]
   conversations       Conversation[]
   salesDemoRequests   SalesDemoRequest[]

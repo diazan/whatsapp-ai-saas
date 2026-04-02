@@ -21,10 +21,13 @@ const BOOKING_FLOW_STATES = [
   "WAITING_RESCHEDULE_SELECTION",
   "WAITING_CANCEL_SELECTION",
   "WAITING_VIEW_OTHER_APPOINTMENTS",
-  "WAITING_ADVISOR_QUESTION"
+  "WAITING_ADVISOR_QUESTION",
+  "WAITING_INFO_REQUEST_MESSAGE",
+  "WAITING_INFO_REQUEST_NAME",
+  "WAITING_INFO_REQUEST_CONTACT"
 ];
 
-  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
+  const COOLDOWN_MS = 1 * 60 * 1000; // 5 minutos
 //const COOLDOWN_MS = 15 * 1000;
 
 // Map en memoria: clave = "clinicId:phone"
@@ -77,6 +80,11 @@ function isValidFlowResponse(state, text) {
 
     case "WAITING_ADVISOR_QUESTION":  // ← agregar esto
       return true;  
+
+    case "WAITING_INFO_REQUEST_MESSAGE":
+    case "WAITING_INFO_REQUEST_NAME":
+    case "WAITING_INFO_REQUEST_CONTACT":
+      return true;
 
     default:
       return false;
