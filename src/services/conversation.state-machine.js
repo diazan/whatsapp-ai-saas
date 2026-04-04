@@ -12,6 +12,8 @@ const BOOKING_KEYWORDS = ["cita", "turno", "agendar", "reservar"];
 
 const { handleSalesBot } = require("./salesBot.service");
 
+const { sendCatalogMessage } = require("./catalog.service");
+
 
 // ─────────────────────────────────────────────
 // ENTRY POINT
@@ -194,7 +196,6 @@ const handleIncomingMessage = async ({
 
     // Títulos personalizables con defaults
     const infoRequestTitle = clinic.infoRequestTitle || "Solicitar información";
-    const servicesTitle    = clinic.servicesTitle    || "🦷 Nuestros servicios";
     const promotionsTitle  = clinic.promotionsTitle  || "Promociones activas";
     const customTitle      = clinic.customSectionTitle || "Sección especial";
     const locationTitle    = clinic.locationTitle    || "Ubicación y horarios";
@@ -216,7 +217,9 @@ const handleIncomingMessage = async ({
     n++;
 
     // Botón 2 — solo si tiene servicios
-    if (hasServices) {
+    const hasCatalog = !!clinic.catalogId;
+    if (hasCatalog || hasServices) {
+      const servicesTitle = clinic.servicesTitle || "📦 Nuestros servicios";
       menu += `${n}️⃣ ${servicesTitle}\n`;
       n++;
     }
@@ -281,7 +284,8 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
   let n = 1;
 
   menuMap[String(n++)] = clinic.hideBooking ? "INFO_REQUEST" : "CITAS";
-  if (hasServices) menuMap[String(n++)] = "SERVICIOS";
+  const hasCatalog = !!clinic.catalogId;
+  if (hasCatalog || hasServices) menuMap[String(n++)] = "SERVICIOS";
   menuMap[String(n++)] = "PROMOCIONES";
   if (clinic.showCustomSection) menuMap[String(n++)] = "CUSTOM";
   menuMap[String(n++)] = "UBICACION";
@@ -305,9 +309,19 @@ async function handleIdle({ text, clinic, conversation, sendMessage }) {
     return sendMessage(buildSubmenuCitas());
   }
 
-  if (action === "SERVICIOS") {
-    const title = clinic.servicesTitle || "🦷 Nuestros servicios";
-    let response = `🦷 *Nuestros servicios*\n\n`;
+if (action === "SERVICIOS") {
+    // Catálogo de Meta tiene prioridad
+    if (clinic.catalogId) {
+      return sendCatalogMessage({
+        clinic,
+        to: conversation.patientPhone,
+        sendMessage
+      });
+    }
+
+    // Fallback: lista de servicios en texto
+    const title = clinic.servicesTitle || "📦 Nuestros servicios";
+    let response = `📦 *${title}*\n\n`;
     services.forEach(service => {
       response += `• ${service.name}`;
       if (service.durationMin) response += ` (${service.durationMin} min)`;

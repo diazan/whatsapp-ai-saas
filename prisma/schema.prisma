@@ -34,6 +34,8 @@ model Clinic {
   showCustomSection      Boolean  @default(true)
   customSectionTitle     String?
   customSectionContent   String?
+  catalogId             String?
+  catalogDescription    String?
     appointments        Appointment[]
   schedules           ClinicSchedule[]
   conversations       Conversation[]
